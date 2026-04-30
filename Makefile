@@ -7,19 +7,17 @@ EJECUTABLE = catalogoEdp1kike
 ARCHIVOS_CPP = $(wildcard $(RUTA_FUENTES)/*.cpp)
 ARCHIVOS_OBJ = $(ARCHIVOS_CPP:.cpp=.o)
 
-.PHONY: all limpiar
+.PHONY: all clean run
 
-all: $(EJECUTABLE)
+all: build
+	cmake --build build
 
-$(EJECUTABLE): $(ARCHIVOS_OBJ)
-	$(CXX) $(FLAGS_COMPILACION) -I$(RUTA_CABECERAS) -o $@ $^
+build:
+	@mkdir -p build
+	cd build && cmake ..
 
-$(RUTA_FUENTES)/%.o: $(RUTA_FUENTES)/%.cpp
-	$(CXX) $(FLAGS_COMPILACION) -I$(RUTA_CABECERAS) -c $< -o $@
+clean:
+	rm -rf build
 
-run: $(EJECUTABLE)
-	@echo "Ejecutando el proyecto uno de kike, llamado: $(EJECUTABLE)..."
-	./$(EJECUTABLE)
-
-limpiar:
-	rm -f $(RUTA_FUENTES)/*.o $(EJECUTABLE)
+run: all
+	./build/UICatalogoP2EddKike

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(UICatalogoP1EddKike VERSION 1.0.0 LANGUAGES CXX)
+project(UICatalogoP2EddKike VERSION 2.0.0 LANGUAGES CXX)
 
 # =============================================================================
 # Configuración de C++17
@@ -54,7 +54,7 @@ set(CABECERAS
 # =============================================================================
 # Crear ejecutable
 # =============================================================================
-add_executable(uiCatalogoP1EddKike
+add_executable(UICatalogoP2EddKike 
     ${FUENTES}
     ${CABECERAS}
 )
@@ -62,14 +62,14 @@ add_executable(uiCatalogoP1EddKike
 # =============================================================================
 # Incluir directorio de cabeceras
 # =============================================================================
-target_include_directories(uiCatalogoP1EddKike PRIVATE
+target_include_directories(UICatalogoP2EddKike PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 # =============================================================================
 # Enlazar con bibliotecas de Qt6
 # =============================================================================
-target_link_libraries(uiCatalogoP1EddKike PRIVATE
+target_link_libraries(UICatalogoP2EddKike PRIVATE
     Qt6::Core
     Qt6::Widgets
 )
@@ -77,7 +77,7 @@ target_link_libraries(uiCatalogoP1EddKike PRIVATE
 # =============================================================================
 # Opciones de compilación (warnings)
 # =============================================================================
-target_compile_options(uiCatalogoP1EddKike PRIVATE
+target_compile_options(UICatalogoP2EddKike PRIVATE
     -Wall
     -Wextra
     -Wpedantic
@@ -87,7 +87,7 @@ target_compile_options(uiCatalogoP1EddKike PRIVATE
 # Configuración para Windows (opcional)
 # =============================================================================
 if(WIN32)
-    set_target_properties(uiCatalogoP1EddKike PROPERTIES
+    set_target_properties(UICatalogoP2EddKike PROPERTIES
         WIN32_EXECUTABLE TRUE
     )
 endif()

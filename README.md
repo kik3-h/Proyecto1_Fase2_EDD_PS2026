@@ -1,4 +1,20 @@
-# Catálogo de Productos de Supermercado v1
+# Catálogo de Productos de Supermercado - Fase 2
+
+Sistema distribuido de gestión de catálogo de productos para múltiples sucursales,
+desarrollado en C++17 con interfaz gráfica Qt6. Implementa desde cero estructuras
+de datos avanzadas (AVL, Árbol B, Árbol B+, Tabla Hash, Grafos, Colas, Pilas) y
+simula transferencias de productos entre sucursales mediante grafos ponderados.
+
+## Dependencias
+
+Las mismas de la Fase 1: GCC ≥15.2, CMake ≥3.16, Qt6, Graphviz.
+
+## Compilación
+
+```bash
+make
+./build/uiCatalogoP2Edd
+```
 
 ## Descripción
 
@@ -89,7 +105,7 @@ Proyecto1_EDD_PS2026/
 ### Paso 1: Clonar o descargar el proyecto
 
 ```bash
-git clone https://github.com/kik3-h/Proyecto1_EDD_PS2026.git
+git clone https://github.com/kik3-h/Proyecto1_Fase2_EDD_PS2026.git
 ```
 
 ### Paso 2: Crear directorio de compilación
@@ -109,7 +125,7 @@ Salida esperada:
 
 ```
 -- ==============================================
--- Proyecto: UICatalogoP1EddKike v1.0.0
+-- Proyecto: UICatalogoP2EddKike v1.0.0
 -- Compilador: GNU 15.2.1
 -- Estándar C++: 17
 -- Qt6 encontrado: 6.10.2
@@ -133,7 +149,7 @@ make -j4
 ### Paso 5: Ejecutar la aplicación
 
 ```bash
-./uiCatalogoP1EddKike
+./uiCatalogoP2EddKike
 ```
 
 ## Uso Rápido
@@ -146,6 +162,6 @@ make -j4
 
 ## Autor
 
-- **Nombre**: Kike
+- **Nombre**: Kike Fase 2
 - **Universidad**: Universidad de San Carlos de Guatemala (USAC)
 - **Curso**: Estructuras de Datos - Semestre 1 2026
