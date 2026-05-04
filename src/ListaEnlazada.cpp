@@ -50,6 +50,39 @@ Producto* ListaEnlazada::buscarPorCodigoBarras(const std::string& codigo) const 
     return nullptr;
 }
 
+// eliminar: Remueve un producto por igualdad de puntero o por código de barras.
+// Complejidad: O(n), por recorrido lineal de la lista.
+bool ListaEnlazada::eliminar(Producto* producto) {
+    if (producto == nullptr) {
+        return false;
+    }
+
+    Nodo* actual = cabeza;
+    Nodo* anterior = nullptr;
+
+    while (actual != nullptr) {
+        const bool coincidePuntero = (actual->producto == producto);
+        const bool coincideCodigo = (actual->producto != nullptr &&
+                                     actual->producto->codigoBarras == producto->codigoBarras);
+
+        if (coincidePuntero || coincideCodigo) {
+            if (anterior == nullptr) {
+                cabeza = actual->siguiente;
+            } else {
+                anterior->siguiente = actual->siguiente;
+            }
+
+            delete actual;
+            return true;
+        }
+
+        anterior = actual;
+        actual = actual->siguiente;
+    }
+
+    return false;
+}
+
 bool ListaEnlazada::eliminarPorCodigoBarras(const std::string& codigo) {
     Nodo* actual = cabeza;
     Nodo* anterior = nullptr;

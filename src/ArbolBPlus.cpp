@@ -304,6 +304,70 @@ void ArbolBPlus::dividirHijo(NodoBPlus* padre, int indice, NodoBPlus* hijo) {
     }
 }
 
+// recolectarProductosDesdeHojas: Recorre la cadena de hojas y agrega todos los
+// productos indexados por categoría.
+// Complejidad: O(n), donde n es el total de productos en el índice B+.
+void ArbolBPlus::recolectarProductosDesdeHojas(std::vector<Producto*>& resultado) const {
+    NodoBPlus* hoja = obtenerPrimeraHoja();
+    while (hoja != nullptr) {
+        for (int i = 0; i < hoja->numClaves; ++i) {
+            if (hoja->claves[i].productos != nullptr) {
+                std::vector<Producto*> productosClave = hoja->claves[i].productos->obtenerTodos();
+                for (Producto* producto : productosClave) {
+                    if (producto != nullptr) {
+                        resultado.push_back(producto);
+                    }
+                }
+            }
+        }
+        hoja = hoja->siguiente;
+    }
+}
+
+// reconstruirDesdeProductos: Reinicia el árbol y reinserta el catálogo actual
+// para eliminar claves de categoría vacías y mantener hojas enlazadas válidas.
+// Complejidad: O(n log_m n), con m = grado del árbol B+.
+bool ArbolBPlus::reconstruirDesdeProductos(const std::vector<Producto*>& productos) {
+    destruirRecursivo(raiz);
+    raiz = nullptr;
+
+    for (Producto* producto : productos) {
+        if (producto != nullptr) {
+            insertar(producto);
+        }
+    }
+
+    return true;
+}
+
+// eliminar: Elimina un producto por (categoría, código). Si la categoría queda
+// vacía, reconstruye el árbol para remover la clave y conservar enlaces de hojas.
+// Complejidad: O(log_m n) si la categoría conserva elementos; O(n log_m n)
+// cuando se requiere reconstrucción completa.
+bool ArbolBPlus::eliminar(const std::string& categoria, const std::string& codigoBarras) {
+    if (categoria.empty() || codigoBarras.empty()) {
+        return false;
+    }
+
+    ClaveCategoria* clave = buscarClaveGlobal(categoria);
+    if (clave == nullptr || clave->productos == nullptr) {
+        return false;
+    }
+
+    const bool eliminado = clave->productos->eliminarPorCodigoBarras(codigoBarras);
+    if (!eliminado) {
+        return false;
+    }
+
+    if (!clave->productos->estaVacia()) {
+        return true;
+    }
+
+    std::vector<Producto*> productosRestantes;
+    recolectarProductosDesdeHojas(productosRestantes);
+    return reconstruirDesdeProductos(productosRestantes);
+}
+
 void ArbolBPlus::buscarPorCategoria(const std::string& categoria) const {
     if (raiz == nullptr) {
         std::cout << "El arbol B+ esta vacio.\n";
@@ -484,7 +548,9 @@ void ArbolBPlus::generarEnlacesHojas(std::ofstream& archivo) const {
 }
 
 void ArbolBPlus::generarDot(const std::string& rutaArchivo) const {
-    std::ofstream archivo(rutaArchivo);
+    // generarDot: Recorre el árbol B+ actual y sobrescribe el DOT sin caché.
+    // Complejidad: O(k), donde k es la cantidad de claves en el índice.
+    std::ofstream archivo(rutaArchivo, std::ios::out | std::ios::trunc);
     if (!archivo.is_open()) {
         std::cout << "Error: no se pudo crear el archivo DOT.\n";
         return;

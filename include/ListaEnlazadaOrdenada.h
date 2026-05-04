@@ -23,6 +23,7 @@ public:
 
     void insertarOrdenado(Producto* producto);
     Producto* buscarPorNombre(const std::string& nombre) const;
+    bool eliminar(const std::string& nombre);
     bool eliminarPorNombre(const std::string& nombre);
     bool eliminarPorCodigoBarras(const std::string& codigoBarras);
     void mostrarTodos() const;

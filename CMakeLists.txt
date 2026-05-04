@@ -33,6 +33,12 @@ set(FUENTES
     src/ArbolAVL.cpp
     src/ArbolB.cpp
     src/ArbolBPlus.cpp
+    src/Pila.cpp
+    src/Cola.cpp
+    src/Sucursal.cpp
+    src/ListaSucursales.cpp
+    src/MinHeap.cpp
+    src/GrafoSucursales.cpp
     src/CargadorCSV.cpp
     src/MedidorRendimiento.cpp
     src/VentanaPrincipal.cpp
@@ -46,6 +52,12 @@ set(CABECERAS
     include/ArbolAVL.h
     include/ArbolB.h
     include/ArbolBPlus.h
+    include/Pila.h
+    include/Cola.h
+    include/Sucursal.h
+    include/ListaSucursales.h
+    include/MinHeap.h
+    include/GrafoSucursales.h
     include/CargadorCSV.h
     include/MedidorRendimiento.h
     include/VentanaPrincipal.h

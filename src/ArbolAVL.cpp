@@ -204,6 +204,12 @@ bool ArbolAVL::eliminarPorNombre(const std::string& nombre) {
     return true;
 }
 
+// eliminar: Alias de eliminación por nombre en AVL.
+// Complejidad: O(log n) promedio y peor caso garantizado por balance AVL.
+bool ArbolAVL::eliminar(const std::string& nombre) {
+    return eliminarPorNombre(nombre);
+}
+
 bool ArbolAVL::eliminarPorCodigoBarras(const std::string& codigoBarras) {
     // Busca por código y elimina por nombre (recorrido completo necesario)
     NodoAVL* actual = raiz;
@@ -305,7 +311,9 @@ void ArbolAVL::generarDotRecursivo(NodoAVL* nodo, std::ofstream& archivo, int& c
 }
 
 void ArbolAVL::generarDot(const std::string& rutaArchivo) const {
-    std::ofstream archivo(rutaArchivo);
+    // generarDot: Recorre el árbol actual en memoria y sobrescribe el archivo DOT.
+    // Complejidad: O(n), donde n es el número de nodos AVL.
+    std::ofstream archivo(rutaArchivo, std::ios::out | std::ios::trunc);
     if (!archivo.is_open()) {
         std::cout << "Error: no se pudo crear el archivo DOT.\n";
         return;

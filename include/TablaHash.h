@@ -26,6 +26,7 @@ public:
     int funcionHash(const std::string& clave) const;
     bool insertar(Producto* producto);
     Producto* buscarPorCodigoBarras(const std::string& codigo) const;
+    bool eliminar(const std::string& codigo);
     bool eliminarPorCodigoBarras(const std::string& codigo);
 };
 

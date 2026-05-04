@@ -10,16 +10,8 @@
 #include <QBrush>
 
 
-// Constructor: Inicializa la ventana principal con referencias al backend
-
-VentanaPrincipal::VentanaPrincipal(
-    ListaEnlazada& listaNormal,
-    ListaEnlazadaOrdenada& listaOrdenada,
-    TablaHash& tablaHash,
-    ArbolAVL& arbolAVL,
-    ArbolB& arbolB,
-    ArbolBPlus& arbolBPlus,
-    QWidget* parent)
+// Constructor: Inicializa la ventana principal para modo multi-sucursal.
+VentanaPrincipal::VentanaPrincipal(QWidget* parent)
     : QMainWindow(parent),
       widgetCentral(nullptr),
       layoutPrincipal(nullptr),
@@ -33,12 +25,9 @@ VentanaPrincipal::VentanaPrincipal(
       btnReportes(nullptr),
       btnBenchmarking(nullptr),
       tablaProductos(nullptr),
-      refListaNormal(listaNormal),
-      refListaOrdenada(listaOrdenada),
-      refTablaHash(tablaHash),
-      refArbolAVL(arbolAVL),
-      refArbolB(arbolB),
-      refArbolBPlus(arbolBPlus) {
+      sucursales(new ListaSucursales()),
+      sucursalActual(nullptr),
+      grafo(new GrafoSucursales()) {
     
     // Configurar ventana principal
     setWindowTitle("Catalogo P1 EDD KIKE");
@@ -49,11 +38,116 @@ VentanaPrincipal::VentanaPrincipal(
     configurarInterfaz();
     aplicarEstilos();
     conectarSenales();
+
+    // Sucursal por defecto para iniciar operaciones de inventario.
+    agregarSucursal(1, "Central", "Ciudad de Guatemala", 10, 15, 20);
+    seleccionarSucursal(1);
+    actualizarTabla();
 }
 
 // Destructor
 VentanaPrincipal::~VentanaPrincipal() {
-    // Qt maneja la memoria de los widgets hijos automáticamente
+    liberarSucursales();
+    delete grafo;
+    grafo = nullptr;
+    delete sucursales;
+    sucursales = nullptr;
+}
+
+// agregarSucursal: Inserta una sucursal nueva en la lista enlazada de sucursales.
+// Complejidad: O(n), por validación de id existente.
+void VentanaPrincipal::agregarSucursal(int id,
+                                       const std::string& nombre,
+                                       const std::string& ubicacion,
+                                       int tiempoIngreso,
+                                       int tiempoPreparacion,
+                                       int intervaloDespacho) {
+    if (sucursales == nullptr) {
+        return;
+    }
+
+    if (sucursales->buscar(id) != nullptr) {
+        return;
+    }
+
+    Sucursal* nuevaSucursal = new Sucursal(id,
+                                           nombre,
+                                           ubicacion,
+                                           tiempoIngreso,
+                                           tiempoPreparacion,
+                                           intervaloDespacho);
+    sucursales->agregar(nuevaSucursal);
+    agregarSucursalAGrafo(id);
+}
+
+// agregarSucursalAGrafo: Registra un nodo de sucursal en el grafo de red.
+// Complejidad: O(1) amortizado.
+void VentanaPrincipal::agregarSucursalAGrafo(int id) {
+    if (grafo == nullptr) {
+        return;
+    }
+
+    grafo->agregarSucursal(id);
+}
+
+// agregarConexionAGrafo: Registra una arista ponderada entre sucursales.
+// Complejidad: O(1).
+void VentanaPrincipal::agregarConexionAGrafo(int origen,
+                                             int destino,
+                                             int tiempo,
+                                             int costo,
+                                             bool bidireccional) {
+    if (grafo == nullptr) {
+        return;
+    }
+
+    grafo->agregarConexion(origen, destino, tiempo, costo, bidireccional);
+}
+
+// seleccionarSucursal: Selecciona una sucursal activa por id.
+// Complejidad: O(n), por búsqueda lineal en la lista.
+void VentanaPrincipal::seleccionarSucursal(int id) {
+    if (sucursales == nullptr) {
+        sucursalActual = nullptr;
+        return;
+    }
+
+    sucursalActual = sucursales->buscar(id);
+}
+
+// obtenerSucursalActual: Retorna la sucursal activa actual.
+// Complejidad: O(1).
+Sucursal* VentanaPrincipal::obtenerSucursalActual() const {
+    return sucursalActual;
+}
+
+// haySucursalSeleccionada: Verifica si hay sucursal seleccionada.
+// Complejidad: O(1).
+bool VentanaPrincipal::haySucursalSeleccionada() const {
+    return sucursalActual != nullptr;
+}
+
+// mostrarAdvertenciaSucursalNoSeleccionada: Muestra alerta de selección faltante.
+// Complejidad: O(1).
+void VentanaPrincipal::mostrarAdvertenciaSucursalNoSeleccionada() {
+    QMessageBox::warning(this, "Sucursal no seleccionada", "Seleccione una sucursal primero");
+}
+
+// liberarSucursales: Libera memoria de las sucursales administradas.
+// Complejidad: O(n), donde n es el número de sucursales.
+void VentanaPrincipal::liberarSucursales() {
+    if (sucursales == nullptr) {
+        sucursalActual = nullptr;
+        return;
+    }
+
+    ListaSucursales::NodoSucursal* actual = sucursales->obtenerPrimero();
+    while (actual != nullptr) {
+        delete actual->dato;
+        actual->dato = nullptr;
+        actual = actual->siguiente;
+    }
+    sucursalActual = nullptr;
 }
 
 // Configurar la interfaz principal
@@ -540,6 +634,11 @@ void VentanaPrincipal::conectarSenales() {
 // SLOT: Cargar archivo CSV
 // Usa QFileDialog para seleccionar archivo y carga los datos en las estructuras
 void VentanaPrincipal::onCargarCSV() {
+    if (!haySucursalSeleccionada()) {
+        mostrarAdvertenciaSucursalNoSeleccionada();
+        return;
+    }
+
     QString archivo = QFileDialog::getOpenFileName(
         this,
         "Seleccionar archivo CSV",
@@ -553,22 +652,22 @@ void VentanaPrincipal::onCargarCSV() {
 
     // Convertir QString a std::string y cargar
     std::string rutaArchivo = archivo.toStdString();
-    
+
     cargadorCSV.cargar(
         rutaArchivo,
-        refListaNormal,
-        refListaOrdenada,
-        refTablaHash,
-        refArbolAVL,
-        refArbolB,
-        refArbolBPlus
+        *(sucursalActual->obtenerListaGeneral()),
+        *(sucursalActual->obtenerListaOrdenada()),
+        *(sucursalActual->obtenerTablaHash()),
+        *(sucursalActual->obtenerArbolAVL()),
+        *(sucursalActual->obtenerArbolB()),
+        *(sucursalActual->obtenerArbolBPlus())
     );
 
     // Actualizar la tabla con los nuevos datos
     actualizarTabla();
 
     // Mostrar mensaje de éxito
-    int cantidadProductos = static_cast<int>(refListaNormal.obtenerTodos().size());
+    int cantidadProductos = static_cast<int>(sucursalActual->obtenerListaGeneral()->obtenerTodos().size());
     QMessageBox::information(
         this,
         "Carga Exitosa",
@@ -587,8 +686,13 @@ void VentanaPrincipal::actualizarTabla() {
     // Limpiar tabla
     tablaProductos->setRowCount(0);
 
+    if (!haySucursalSeleccionada()) {
+        tablaProductos->setSortingEnabled(true);
+        return;
+    }
+
     // Obtener todos los productos como vector (buffer temporal)
-    std::vector<Producto*> productos = refListaNormal.obtenerTodos();
+    std::vector<Producto*> productos = sucursalActual->obtenerListaGeneral()->obtenerTodos();
 
     // Llenar la tabla
     for (size_t i = 0; i < productos.size(); ++i) {
@@ -634,6 +738,11 @@ void VentanaPrincipal::actualizarTabla() {
 // SLOT: Insertar nuevo producto
 // Usa un QDialog con QFormLayout para mejor experiencia de usuario
 void VentanaPrincipal::onInsertarProducto() {
+    if (!haySucursalSeleccionada()) {
+        mostrarAdvertenciaSucursalNoSeleccionada();
+        return;
+    }
+
     // Crear diálogo de inserción
     QDialog dialogo(this);
     dialogo.setWindowTitle("Insertar Nuevo Producto");
@@ -751,20 +860,13 @@ void VentanaPrincipal::onInsertarProducto() {
         stock
     );
 
-    // Intentar insertar en tabla hash (verifica duplicados)
-    if (!refTablaHash.insertar(nuevoProducto)) {
+    // Insertar transaccionalmente en la sucursal seleccionada.
+    if (!sucursalActual->agregarProducto(nuevoProducto)) {
         delete nuevoProducto;
         QMessageBox::warning(this, "Error",
-            "No se pudo insertar: el código de barras ya existe.");
+            "No se pudo insertar el producto en la sucursal seleccionada.");
         return;
     }
-
-    // Insertar en todas las demás estructuras
-    refListaNormal.insertar(nuevoProducto);
-    refListaOrdenada.insertarOrdenado(nuevoProducto);
-    refArbolAVL.insertar(nuevoProducto);
-    refArbolB.insertar(nuevoProducto);
-    refArbolBPlus.insertar(nuevoProducto);
 
     // Actualizar tabla
     actualizarTabla();
@@ -773,9 +875,32 @@ void VentanaPrincipal::onInsertarProducto() {
         QString("Producto '%1' insertado correctamente.").arg(nombre));
 }
 
+// regenerarVisualizaciones: Regenera DOT y PNG de los árboles con el estado
+// actual en memoria para evitar reportes obsoletos tras operaciones CRUD.
+// Complejidad: O(n) por árbol al recorrer todos sus nodos.
+void VentanaPrincipal::regenerarVisualizaciones() {
+    if (!haySucursalSeleccionada()) {
+        return;
+    }
+
+    QDir dir;
+    if (!dir.exists("data")) {
+        dir.mkpath("data");
+    }
+
+    sucursalActual->obtenerArbolAVL()->generarImagen();
+    sucursalActual->obtenerArbolB()->generarImagen();
+    sucursalActual->obtenerArbolBPlus()->generarImagen();
+}
+
 // SLOT: Eliminar producto
 // Solicita código de barras y elimina el producto de todas las estructuras
 void VentanaPrincipal::onEliminarProducto() {
+    if (!haySucursalSeleccionada()) {
+        mostrarAdvertenciaSucursalNoSeleccionada();
+        return;
+    }
+
     bool ok;
     QString codigo = QInputDialog::getText(this, "Eliminar Producto",
         "Ingrese el código de barras del producto a eliminar:",
@@ -786,7 +911,7 @@ void VentanaPrincipal::onEliminarProducto() {
     }
 
     // Buscar el producto primero
-    Producto* producto = refTablaHash.buscarPorCodigoBarras(codigo.toStdString());
+    Producto* producto = sucursalActual->buscarPorCodigo(codigo.toStdString());
     
     if (producto == nullptr) {
         QMessageBox::warning(this, "No encontrado",
@@ -811,15 +936,23 @@ void VentanaPrincipal::onEliminarProducto() {
         return;
     }
 
-    // Eliminar de todas las estructuras
+    // Eliminar de forma transaccional en todas las estructuras.
     std::string codigoStr = codigo.toStdString();
-    refListaNormal.eliminarPorCodigoBarras(codigoStr);
-    refListaOrdenada.eliminarPorCodigoBarras(codigoStr);
-    refTablaHash.eliminarPorCodigoBarras(codigoStr);
-    // Nota: AVL, B y B+ requerirían métodos de eliminación adicionales
+    const bool eliminacionCorrecta = sucursalActual->eliminarProducto(codigoStr);
+
+    if (!eliminacionCorrecta) {
+        QMessageBox::critical(
+            this,
+            "Error de Eliminacion",
+            "No se pudo completar la eliminación en todas las estructuras.\n"
+            "Se aplicó rollback para preservar consistencia."
+        );
+        return;
+    }
 
     // Actualizar tabla
     actualizarTabla();
+    regenerarVisualizaciones();
 
     QMessageBox::information(this, "Éxito",
         "Producto eliminado correctamente.");
@@ -828,6 +961,11 @@ void VentanaPrincipal::onEliminarProducto() {
 // SLOT: Buscar producto por código de barras
 // Usa QInputDialog para pedir el código y busca en la TablaHash
 void VentanaPrincipal::onBuscarProducto() {
+    if (!haySucursalSeleccionada()) {
+        mostrarAdvertenciaSucursalNoSeleccionada();
+        return;
+    }
+
     bool ok;
     QString codigo = QInputDialog::getText(
         this,
@@ -844,7 +982,7 @@ void VentanaPrincipal::onBuscarProducto() {
 
     // Buscar en la tabla hash
     std::string codigoStr = codigo.toStdString();
-    Producto* producto = refTablaHash.buscarPorCodigoBarras(codigoStr);
+    Producto* producto = sucursalActual->buscarPorCodigo(codigoStr);
 
     if (producto == nullptr) {
         QMessageBox::warning(
@@ -882,7 +1020,12 @@ void VentanaPrincipal::onBuscarProducto() {
 // SLOT: Generar reportes Graphviz
 // Llama a generarImagen() de AVL, B y B+
 void VentanaPrincipal::onGenerarReportes() {
-    if (refListaNormal.estaVacia()) {
+    if (!haySucursalSeleccionada()) {
+        mostrarAdvertenciaSucursalNoSeleccionada();
+        return;
+    }
+
+    if (sucursalActual->obtenerListaGeneral()->estaVacia()) {
         QMessageBox::warning(this, "Sin Datos",
             "No hay productos cargados para generar reportes.\n"
             "Por favor, cargue un archivo CSV primero.");
@@ -895,10 +1038,8 @@ void VentanaPrincipal::onGenerarReportes() {
         dir.mkpath("data");
     }
 
-    // Generar imágenes de los tres árboles
-    refArbolAVL.generarImagen();
-    refArbolB.generarImagen();
-    refArbolBPlus.generarImagen();
+    // Regenerar visualizaciones desde el estado vigente en memoria.
+    regenerarVisualizaciones();
 
     // Crear diálogo visor con pestañas
     QDialog* visor = new QDialog(this);
@@ -914,6 +1055,7 @@ void VentanaPrincipal::onGenerarReportes() {
     // Función auxiliar para crear pestaña con imagen
     auto crearPestana = [&](const QString& titulo, const QString& rutaImagen) -> QWidget* {
         QWidget* pestana = new QWidget();
+        pestana->setObjectName(titulo);
         QVBoxLayout* layoutPestana = new QVBoxLayout(pestana);
         layoutPestana->setContentsMargins(5, 5, 5, 5);
         
@@ -992,7 +1134,12 @@ void VentanaPrincipal::onGenerarReportes() {
 // SLOT: Ejecutar pruebas de rendimiento (Benchmarking)
 // Muestra resultados en QDialog con QTextEdit monoespaciado
 void VentanaPrincipal::onBenchmarking() {
-    if (refListaNormal.estaVacia()) {
+    if (!haySucursalSeleccionada()) {
+        mostrarAdvertenciaSucursalNoSeleccionada();
+        return;
+    }
+
+    if (sucursalActual->obtenerListaGeneral()->estaVacia()) {
         QMessageBox::warning(this, "Sin Datos",
             "No hay productos cargados para ejecutar benchmarking.\n"
             "Por favor, cargue un archivo CSV primero.");
@@ -1002,10 +1149,10 @@ void VentanaPrincipal::onBenchmarking() {
     // Ejecutar benchmarking y obtener resultado como string
     MedidorRendimiento medidor;
     std::string resultado = medidor.ejecutarPruebasBusqueda(
-        refListaNormal,
-        refListaOrdenada,
-        refArbolAVL,
-        refTablaHash
+        *(sucursalActual->obtenerListaGeneral()),
+        *(sucursalActual->obtenerListaOrdenada()),
+        *(sucursalActual->obtenerArbolAVL()),
+        *(sucursalActual->obtenerTablaHash())
     );
 
     // Crear diálogo para mostrar resultados
@@ -1080,6 +1227,11 @@ void VentanaPrincipal::onCambioFiltroBusqueda(int indice) {
 // SLOT: Ejecutar búsqueda avanzada según filtro seleccionado
 
 void VentanaPrincipal::ejecutarBusquedaAvanzada() {
+    if (!haySucursalSeleccionada()) {
+        mostrarAdvertenciaSucursalNoSeleccionada();
+        return;
+    }
+
     QString termino = inputBusqueda->text().trimmed();
     
     if (termino.isEmpty()) {
@@ -1093,14 +1245,14 @@ void VentanaPrincipal::ejecutarBusquedaAvanzada() {
     
     switch (filtro) {
         case 0: {  // Nombre (AVL)
-            Producto* p = refArbolAVL.buscarPorNombre(termino.toStdString());
+            Producto* p = sucursalActual->buscarPorNombre(termino.toStdString());
             if (p != nullptr) {
                 resultados.push_back(p);
             }
             break;
         }
         case 1: {  // Categoría (B+)
-            resultados = refArbolBPlus.obtenerPorCategoria(termino.toStdString());
+            resultados = sucursalActual->buscarPorCategoria(termino.toStdString());
             break;
         }
         case 2: {  // Rango de Fecha (B)
@@ -1110,7 +1262,8 @@ void VentanaPrincipal::ejecutarBusquedaAvanzada() {
                     "Para busqueda por rango, ingrese tambien la fecha de fin.");
                 return;
             }
-            resultados = refArbolB.obtenerPorRango(termino.toStdString(), fechaFin.toStdString());
+            resultados = sucursalActual->buscarPorRangoFecha(termino.toStdString(),
+                                                            fechaFin.toStdString());
             break;
         }
     }

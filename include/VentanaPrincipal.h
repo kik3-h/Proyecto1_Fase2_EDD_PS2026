@@ -27,17 +27,15 @@
 #include <QFontDatabase>
 #include <QWheelEvent>
 #include <QSlider>
+#include <string>
 #include <vector>
 
 // Incluir estructuras de datos del backend
-#include "ListaEnlazada.h"
-#include "ListaEnlazadaOrdenada.h"
-#include "TablaHash.h"
-#include "ArbolAVL.h"
-#include "ArbolB.h"
-#include "ArbolBPlus.h"
+#include "ListaSucursales.h"
+#include "Sucursal.h"
 #include "CargadorCSV.h"
 #include "MedidorRendimiento.h"
+#include "GrafoSucursales.h"
 
 // VentanaPrincipal: Ventana principal de la aplicación con tema FC Barcelona en teoria jaksjas
 // Hereda de QMainWindow para proporcionar menús, barras de herramientas, etc.
@@ -45,17 +43,33 @@ class VentanaPrincipal : public QMainWindow {
     Q_OBJECT
 
 public:
-    // Constructor que recibe referencias a todas las estructuras de datos
-    explicit VentanaPrincipal(
-        ListaEnlazada& listaNormal,
-        ListaEnlazadaOrdenada& listaOrdenada,
-        TablaHash& tablaHash,
-        ArbolAVL& arbolAVL,
-        ArbolB& arbolB,
-        ArbolBPlus& arbolBPlus,
-        QWidget* parent = nullptr
-    );
+    // Constructor principal de la ventana.
+    explicit VentanaPrincipal(QWidget* parent = nullptr);
     ~VentanaPrincipal();
+
+    // Crea una nueva sucursal y la agrega a la colección enlazada. Complejidad O(n).
+    void agregarSucursal(int id,
+                         const std::string& nombre,
+                         const std::string& ubicacion,
+                         int tiempoIngreso,
+                         int tiempoPreparacion,
+                         int intervaloDespacho);
+
+    // Registra una sucursal dentro del grafo de red. Complejidad O(1) amortizado.
+    void agregarSucursalAGrafo(int id);
+
+    // Registra una conexión ponderada dentro del grafo de sucursales. Complejidad O(1).
+    void agregarConexionAGrafo(int origen,
+                               int destino,
+                               int tiempo,
+                               int costo,
+                               bool bidireccional);
+
+    // Selecciona la sucursal activa por id para operar desde la UI. Complejidad O(n).
+    void seleccionarSucursal(int id);
+
+    // Retorna la sucursal activa; nullptr si no hay selección. Complejidad O(1).
+    Sucursal* obtenerSucursalActual() const;
 
 private slots:
     // Slots para manejar eventos de botones
@@ -108,13 +122,10 @@ private:
     // Tabla de productos
     QTableWidget* tablaProductos;
 
-    // Referencias a estructuras de datos del backend
-    ListaEnlazada& refListaNormal;
-    ListaEnlazadaOrdenada& refListaOrdenada;
-    TablaHash& refTablaHash;
-    ArbolAVL& refArbolAVL;
-    ArbolB& refArbolB;
-    ArbolBPlus& refArbolBPlus;
+    // Colección enlazada de sucursales y sucursal seleccionada.
+    ListaSucursales* sucursales;
+    Sucursal* sucursalActual;
+    GrafoSucursales* grafo;
     
     // Cargador de CSV (propio de la ventana)
     CargadorCSV cargadorCSV;
@@ -126,9 +137,13 @@ private:
     void configurarTabla();
     void aplicarEstilos();
     void conectarSenales();
+    bool haySucursalSeleccionada() const;
+    void mostrarAdvertenciaSucursalNoSeleccionada();
+    void liberarSucursales();
     
     // Método auxiliar para mostrar productos en la tabla
     void mostrarProductosEnTabla(const std::vector<Producto*>& productos);
+    void regenerarVisualizaciones();
 };
 
 #endif // VENTANA_PRINCIPAL_H

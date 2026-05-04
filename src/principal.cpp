@@ -4,17 +4,6 @@
 #include <QApplication>
 #include "VentanaPrincipal.h"
 
-// Includes del backend (estructuras de datos)
-#include "ArbolAVL.h"
-#include "ArbolB.h"
-#include "ArbolBPlus.h"
-#include "CargadorCSV.h"
-#include "ListaEnlazada.h"
-#include "ListaEnlazadaOrdenada.h"
-#include "MedidorRendimiento.h"
-#include "Producto.h"
-#include "TablaHash.h"
-
 int main(int argc, char* argv[]) {
     // Crear aplicación Qt
     QApplication app(argc, argv);
@@ -24,23 +13,8 @@ int main(int argc, char* argv[]) {
     QApplication::setApplicationVersion("1.0.0");
     QApplication::setOrganizationName("USAC - EDD 2026");
 
-    // Instanciar estructuras de datos del backend
-    ListaEnlazada listaProductosNormal;
-    ListaEnlazadaOrdenada listaProductosOrdenada;
-    TablaHash tablaProductos;
-    ArbolAVL arbolProductos;
-    ArbolB arbolProductosFecha;
-    ArbolBPlus arbolProductosCategoria;
-
-    // Crear ventana principal pasando referencias a las estructuras
-    VentanaPrincipal ventana(
-        listaProductosNormal,
-        listaProductosOrdenada,
-        tablaProductos,
-        arbolProductos,
-        arbolProductosFecha,
-        arbolProductosCategoria
-    );
+    // Crear ventana principal (gestiona sucursales e inventarios internamente).
+    VentanaPrincipal ventana;
     ventana.show();
 
     // Ejecutar loop de eventos de Qt

@@ -25,6 +25,7 @@ public:
     void insertar(Producto* producto);
     Producto* buscarPorNombre(const std::string& nombre) const;
     Producto* buscarPorCodigoBarras(const std::string& codigo) const;
+    bool eliminar(Producto* producto);
     bool eliminarPorCodigoBarras(const std::string& codigo);
     int obtenerPrimerosProductos(Producto** productos, int cantidadMaxima) const;
     void mostrarTodos() const;

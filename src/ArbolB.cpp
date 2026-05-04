@@ -234,6 +234,101 @@ void ArbolB::dividirHijo(NodoB* padre, int indice, NodoB* hijo) {
     ++(padre->numClaves);
 }
 
+// recolectarProductosRecursivo: Recorre el árbol B en in-orden y acumula los
+// punteros Producto* almacenados en cada clave.
+// Complejidad: O(n), donde n es el total de productos indexados.
+void ArbolB::recolectarProductosRecursivo(NodoB* nodo,
+                                          std::vector<Producto*>& resultado,
+                                          const std::string* fechaExcluida) const {
+    if (nodo == nullptr) {
+        return;
+    }
+
+    for (int i = 0; i < nodo->numClaves; ++i) {
+        if (!nodo->esHoja) {
+            recolectarProductosRecursivo(nodo->hijos[i], resultado, fechaExcluida);
+        }
+
+        const bool fechaFiltrada = (fechaExcluida != nullptr &&
+                                    nodo->claves[i].fecha == *fechaExcluida);
+        if (!fechaFiltrada && nodo->claves[i].productos != nullptr) {
+            std::vector<Producto*> productosClave = nodo->claves[i].productos->obtenerTodos();
+            for (Producto* producto : productosClave) {
+                if (producto != nullptr) {
+                    resultado.push_back(producto);
+                }
+            }
+        }
+    }
+
+    if (!nodo->esHoja) {
+        recolectarProductosRecursivo(nodo->hijos[nodo->numClaves], resultado, fechaExcluida);
+    }
+}
+
+// reconstruirDesdeProductos: Reinicia el árbol y reinserta todos los productos
+// restantes para mantener claves sin listas vacías y estructura consistente.
+// Complejidad: O(n log_m n), con m = grado del árbol B.
+bool ArbolB::reconstruirDesdeProductos(const std::vector<Producto*>& productos) {
+    destruirRecursivo(raiz);
+    raiz = nullptr;
+
+    for (Producto* producto : productos) {
+        if (producto != nullptr) {
+            insertar(producto);
+        }
+    }
+
+    return true;
+}
+
+// eliminar: Elimina la clave completa de una fecha y reconstruye el árbol para
+// conservar invariantes de ocupación mínima y balance del índice.
+// Complejidad: O(n log_m n), por reindexación de productos restantes.
+bool ArbolB::eliminar(const std::string& fecha) {
+    if (fecha.empty()) {
+        return false;
+    }
+
+    ClaveFecha* clave = buscarClaveRecursivo(raiz, fecha);
+    if (clave == nullptr) {
+        return false;
+    }
+
+    std::vector<Producto*> productosRestantes;
+    recolectarProductosRecursivo(raiz, productosRestantes, &fecha);
+    return reconstruirDesdeProductos(productosRestantes);
+}
+
+// eliminar: Quita un producto por (fecha, código). Si la fecha queda sin
+// productos, reconstruye el árbol para remover la clave vacía y preservar
+// invariantes estructurales del índice.
+// Complejidad: O(log_m n) cuando la fecha conserva elementos; O(n log_m n)
+// cuando requiere reconstrucción por clave vacía.
+bool ArbolB::eliminar(const std::string& fecha, const std::string& codigoBarras) {
+    if (fecha.empty() || codigoBarras.empty()) {
+        return false;
+    }
+
+    ClaveFecha* clave = buscarClaveRecursivo(raiz, fecha);
+    if (clave == nullptr || clave->productos == nullptr) {
+        return false;
+    }
+
+    const bool eliminado = clave->productos->eliminarPorCodigoBarras(codigoBarras);
+    if (!eliminado) {
+        return false;
+    }
+
+    if (!clave->productos->estaVacia()) {
+        return true;
+    }
+
+    std::vector<Producto*> productosRestantes;
+    recolectarProductosRecursivo(raiz, productosRestantes);
+    return reconstruirDesdeProductos(productosRestantes);
+}
+
 void ArbolB::buscarPorRango(const std::string& fechaInicio, const std::string& fechaFin) const {
     if (raiz == nullptr) {
         std::cout << "El arbol B esta vacio.\n";
@@ -386,7 +481,9 @@ void ArbolB::generarDotRecursivo(NodoB* nodo, std::ofstream& archivo, int& conta
 }
 
 void ArbolB::generarDot(const std::string& rutaArchivo) const {
-    std::ofstream archivo(rutaArchivo);
+    // generarDot: Recorre el árbol B vigente en memoria y regenera el DOT.
+    // Complejidad: O(k), donde k es la cantidad de claves almacenadas.
+    std::ofstream archivo(rutaArchivo, std::ios::out | std::ios::trunc);
     if (!archivo.is_open()) {
         std::cout << "Error: no se pudo crear el archivo DOT.\n";
         return;

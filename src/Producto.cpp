@@ -12,8 +12,17 @@ Producto::Producto(const std::string& nombre,
       categoria(categoria),
       fechaCaducidad(fechaCaducidad),
       marca(marca),
+      estado("Disponible"),
       precio(precio),
       stock(stock) {}
+
+const std::string& Producto::obtenerEstado() const {
+    return estado;
+}
+
+void Producto::establecerEstado(const std::string& nuevoEstado) {
+    estado = nuevoEstado;
+}
 
 std::ostream& operator<<(std::ostream& salida, const Producto& producto) {
     salida << "Nombre: " << producto.nombre << '\n'

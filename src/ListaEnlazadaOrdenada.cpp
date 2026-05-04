@@ -57,6 +57,12 @@ Producto* ListaEnlazadaOrdenada::buscarPorNombre(const std::string& nombre) cons
     return nullptr;
 }
 
+// eliminar: Alias semántico de eliminación por nombre para mantener API uniforme.
+// Complejidad: O(n), por recorrido lineal con corte temprano por orden.
+bool ListaEnlazadaOrdenada::eliminar(const std::string& nombre) {
+    return eliminarPorNombre(nombre);
+}
+
 bool ListaEnlazadaOrdenada::eliminarPorNombre(const std::string& nombre) {
     NodoOrdenado* actual = cabeza;
     NodoOrdenado* anterior = nullptr;

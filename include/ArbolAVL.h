@@ -46,6 +46,7 @@ public:
 
     void insertar(Producto* producto);
     Producto* buscarPorNombre(const std::string& nombre) const;
+    bool eliminar(const std::string& nombre);
     bool eliminarPorNombre(const std::string& nombre);
     bool eliminarPorCodigoBarras(const std::string& codigoBarras);
 

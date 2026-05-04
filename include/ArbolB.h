@@ -48,6 +48,10 @@ private:
                                const std::string& fechaInicio,
                                const std::string& fechaFin,
                                std::vector<Producto*>& resultado) const;
+    void recolectarProductosRecursivo(NodoB* nodo,
+                                      std::vector<Producto*>& resultado,
+                                      const std::string* fechaExcluida = nullptr) const;
+    bool reconstruirDesdeProductos(const std::vector<Producto*>& productos);
 
     void destruirRecursivo(NodoB* nodo);
 
@@ -59,6 +63,8 @@ public:
     ~ArbolB();
 
     void insertar(Producto* producto);
+    bool eliminar(const std::string& fecha);
+    bool eliminar(const std::string& fecha, const std::string& codigoBarras);
     void buscarPorRango(const std::string& fechaInicio, const std::string& fechaFin) const;
     
     // Retorna productos en un rango de fechas (para GUI)

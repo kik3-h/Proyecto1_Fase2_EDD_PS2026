@@ -79,6 +79,12 @@ Producto* TablaHash::buscarPorCodigoBarras(const std::string& codigo) const {
     return nullptr;
 }
 
+// eliminar: Alias de borrado por código de barras.
+// Complejidad promedio: O(1), peor caso O(n) por colisiones.
+bool TablaHash::eliminar(const std::string& codigo) {
+    return eliminarPorCodigoBarras(codigo);
+}
+
 bool TablaHash::eliminarPorCodigoBarras(const std::string& codigo) {
     if (codigo.empty() || tabla == nullptr) {
         return false;

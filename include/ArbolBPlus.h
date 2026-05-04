@@ -46,6 +46,8 @@ private:
     
     // Búsqueda global en todas las hojas para evitar duplicados
     ClaveCategoria* buscarClaveGlobal(const std::string& categoria) const;
+    void recolectarProductosDesdeHojas(std::vector<Producto*>& resultado) const;
+    bool reconstruirDesdeProductos(const std::vector<Producto*>& productos);
 
     void destruirRecursivo(NodoBPlus* nodo);
 
@@ -62,6 +64,7 @@ public:
     ~ArbolBPlus();
 
     void insertar(Producto* producto);
+    bool eliminar(const std::string& categoria, const std::string& codigoBarras);
     void buscarPorCategoria(const std::string& categoria) const;
     
     // Retorna productos de una categoría (para GUI)

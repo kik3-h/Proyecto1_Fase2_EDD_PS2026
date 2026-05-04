@@ -11,6 +11,7 @@ public:
     std::string categoria;
     std::string fechaCaducidad;
     std::string marca;
+    std::string estado;
     double precio;
     int stock;
 
@@ -21,6 +22,12 @@ public:
              const std::string& marca,
              double precio,
              int stock);
+
+    // Retorna el estado logístico actual del producto. Complejidad O(1).
+    const std::string& obtenerEstado() const;
+
+    // Actualiza el estado logístico del producto. Complejidad O(1).
+    void establecerEstado(const std::string& nuevoEstado);
 };
 
 std::ostream& operator<<(std::ostream& salida, const Producto& producto);
