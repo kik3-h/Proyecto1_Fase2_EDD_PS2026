@@ -1,7 +1,8 @@
 #include "Simulador.h"
 
 #include <iostream>
-
+//esta clase hace la simulación de la red de sucursales 
+//
 Simulador::Simulador(GrafoSucursales* g, ListaSucursales* s)
     : grafo(g), sucursales(s), eventosPendientes(new Cola()), tickActual(0) {}
 

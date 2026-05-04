@@ -209,3 +209,11 @@ GrafoSucursales::Arista* GrafoSucursales::obtenerAristas(int nodoId) const {
 
     return adyacencia[nodoId]->cabeza;
 }
+
+int GrafoSucursales::obtenerCapacidadActual() const {
+    return maxNodos;
+}
+
+bool GrafoSucursales::existeSucursal(int id) const {
+    return nodoValido(id);
+}

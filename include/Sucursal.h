@@ -101,6 +101,13 @@ public:
     int obtenerTiempoPreparacion() const;
     int obtenerIntervaloDespacho() const;
 
+    // Setters de metadatos para administración de sucursales. Complejidad O(1).
+    void establecerNombre(const std::string& nuevoNombre);
+    void establecerUbicacion(const std::string& nuevaUbicacion);
+    void establecerTiempoIngreso(int nuevoTiempoIngreso);
+    void establecerTiempoPreparacion(int nuevoTiempoPreparacion);
+    void establecerIntervaloDespacho(int nuevoIntervaloDespacho);
+
     // Getters de estructuras internas para UI y reportes. Complejidad O(1).
     ListaEnlazada* obtenerListaGeneral() const;
     ListaEnlazadaOrdenada* obtenerListaOrdenada() const;

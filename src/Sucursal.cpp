@@ -3,6 +3,7 @@
 // Sucursal: implementación de inventario local con sincronización entre índices.
 // Todas las operaciones usan estructuras manuales y gestión explícita de memoria.
 
+// esto es un constructor de la clase Sucursal
 Sucursal::Sucursal(int idSucursal,
                    const std::string& nombreSucursal,
                    const std::string& ubicacionSucursal,
@@ -25,7 +26,7 @@ Sucursal::Sucursal(int idSucursal,
       colaPreparacion(new Cola()),
       colaSalida(new Cola()),
       pilaRollback(new Pila()) {}
-
+ // Destructor que libera toda la memoria asignada a las estructuras de datos de la sucursal.
 Sucursal::~Sucursal() {
     delete listaGeneral;
     delete listaOrdenada;
@@ -39,7 +40,7 @@ Sucursal::~Sucursal() {
     delete pilaRollback;
 }
 
-bool Sucursal::agregarProducto(Producto* p) {
+bool Sucursal::agregarProducto(Producto* p) { // Agrega un producto a todas las estructuras de datos de la sucursal, con rollback local en caso de fallo. Complejidad esperada O(log n) debido a las estructuras balanceadas.
     if (p == nullptr) {
         return false;
     }
@@ -51,7 +52,7 @@ bool Sucursal::agregarProducto(Producto* p) {
     bool insertadoBPlus = false;
     bool insertadoHash = false;
 
-    listaGeneral->insertar(p);
+    listaGeneral->insertar(p); // Se inserta el producto en la lista general sin orden específico. Complejidad O(1).
     insertadoListaGeneral = true;
 
     listaOrdenada->insertarOrdenado(p);
@@ -94,7 +95,8 @@ bool Sucursal::agregarProducto(Producto* p) {
 
     return false;
 }
-
+// Elimina un producto por código de barras de todas las estructuras de datos de la sucursal, con rollback local en caso de fallo. Complejidad esperada O(log n) debido a las estructuras balanceadas.
+//alfin pude eliminar correctamente jaskjas
 bool Sucursal::eliminarProducto(const std::string& codigoBarra) {
     if (codigoBarra.empty()) {
         return false;
@@ -120,7 +122,7 @@ bool Sucursal::eliminarProducto(const std::string& codigoBarra) {
     bool eliminadoLista = false;
     bool eliminadoListaOrdenada = false;
 
-    auto restaurarDesdeRespaldo = [&]() {
+    auto restaurarDesdeRespaldo = [&]() { // Función lambda para restaurar los datos del producto original desde el respaldo en caso de rollback.
         productoOriginal->nombre = respaldo->nombre;
         productoOriginal->codigoBarras = respaldo->codigoBarras;
         productoOriginal->categoria = respaldo->categoria;
@@ -130,7 +132,7 @@ bool Sucursal::eliminarProducto(const std::string& codigoBarra) {
         productoOriginal->stock = respaldo->stock;
     };
 
-    auto rollback = [&]() {
+    auto rollback = [&]() { // Función lambda para realizar el rollback de las eliminaciones en caso de fallo en alguna estructura. Restaura el producto original y lo vuelve a insertar en todas las estructuras donde fue eliminado.
         restaurarDesdeRespaldo();
 
         if (eliminadoListaOrdenada) {
@@ -205,7 +207,7 @@ bool Sucursal::eliminarProducto(const std::string& codigoBarra) {
     return true;
 }
 
-Producto* Sucursal::buscarPorCodigo(const std::string& codigo) {
+Producto* Sucursal::buscarPorCodigo(const std::string& codigo) { // Busca un producto por código de barras utilizando la tabla hash local. Complejidad O(1) promedio.
     return tablaHash->buscarPorCodigoBarras(codigo);
 }
 
@@ -221,7 +223,8 @@ std::vector<Producto*> Sucursal::buscarPorRangoFecha(const std::string& inicio,
                                                      const std::string& fin) {
     return arbolB->obtenerPorRango(inicio, fin);
 }
-
+//estos voids son para encolar y desencolar productos en las colas de ingreso, preparación y salida, 
+// así como para manejar la pila de rollback. Cada operación tiene una complejidad O(1) debido a la naturaleza de las estructuras de datos utilizadas (colas y pilas).
 void Sucursal::encolarIngreso(Producto* p) {
     colaIngreso->encolar(p);
 }
@@ -276,6 +279,26 @@ int Sucursal::obtenerTiempoPreparacion() const {
 
 int Sucursal::obtenerIntervaloDespacho() const {
     return intervaloDespacho;
+}
+
+void Sucursal::establecerNombre(const std::string& nuevoNombre) {
+    nombre = nuevoNombre;
+}
+
+void Sucursal::establecerUbicacion(const std::string& nuevaUbicacion) {
+    ubicacion = nuevaUbicacion;
+}
+
+void Sucursal::establecerTiempoIngreso(int nuevoTiempoIngreso) {
+    tiempoIngreso = nuevoTiempoIngreso;
+}
+
+void Sucursal::establecerTiempoPreparacion(int nuevoTiempoPreparacion) {
+    tiempoPreparacion = nuevoTiempoPreparacion;
+}
+
+void Sucursal::establecerIntervaloDespacho(int nuevoIntervaloDespacho) {
+    intervaloDespacho = nuevoIntervaloDespacho;
 }
 
 ListaEnlazada* Sucursal::obtenerListaGeneral() const {

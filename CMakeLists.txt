@@ -39,6 +39,8 @@ set(FUENTES
     src/ListaSucursales.cpp
     src/MinHeap.cpp
     src/GrafoSucursales.cpp
+    src/Simulador.cpp
+    src/VisorGrafo.cpp
     src/CargadorCSV.cpp
     src/MedidorRendimiento.cpp
     src/VentanaPrincipal.cpp
@@ -58,6 +60,8 @@ set(CABECERAS
     include/ListaSucursales.h
     include/MinHeap.h
     include/GrafoSucursales.h
+    include/Simulador.h
+    include/VisorGrafo.h
     include/CargadorCSV.h
     include/MedidorRendimiento.h
     include/VentanaPrincipal.h

@@ -65,6 +65,12 @@ public:
 
     // Retorna el primer nodo de arista para iterar vecinos de un id. O(1).
     Arista* obtenerAristas(int nodoId) const;
+
+    // Retorna la capacidad actual interna del arreglo de nodos. O(1).
+    int obtenerCapacidadActual() const;
+
+    // Indica si el id corresponde a un nodo registrado en el grafo. O(1).
+    bool existeSucursal(int id) const;
 };
 
 #endif

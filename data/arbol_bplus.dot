@@ -15,66 +15,20 @@ digraph ArbolBPlus {
         ley1 -> ley2 [style=dashed, color=blue, label="Enlace Hoja"];
     }
 
-    nodo0 [label="<f0> Food - Dairy|<f1> Food - Pasta", fillcolor=lightyellow];
+    nodo0 [label="<f0> Lácteos", fillcolor=lightyellow];
     nodo0 -> nodo1;
-    nodo1 [label="<f0> Clothing - Activewear|<f1> Clothing - Tops|<f2> Food - Baking", fillcolor=lightyellow];
-    nodo1 -> nodo2;
-    nodo2 [label="{<f0> Accessories|<f1> Art Supplies|<f2> Clothing}|<sig>", fillcolor=lightgreen];
-    nodo1 -> nodo3;
-    nodo3 [label="{<f0> Clothing - Activewear|<f1> Clothing - Bottoms|<f2> Clothing - Shirts}|<sig>", fillcolor=lightgreen];
-    nodo1 -> nodo4;
-    nodo4 [label="{<f0> Clothing - Tops|<f1> Crafts|<f2> Electronics|<f3> Fitness|<f4> Food - Bakery}|<sig>", fillcolor=lightgreen];
-    nodo1 -> nodo5;
-    nodo5 [label="{<f0> Food - Baking|<f1> Food - Beverages|<f2> Food - Canned Goods|<f3> Food - Cereals|<f4> Food - Condiments}|<sig>", fillcolor=lightgreen];
-    nodo0 -> nodo6;
-    nodo6 [label="<f0> Food - Frozen|<f1> Food - Meat", fillcolor=lightyellow];
-    nodo6 -> nodo7;
-    nodo7 [label="{<f0> Food - Dairy|<f1> Food - Dairy Alternatives}|<sig>", fillcolor=lightgreen];
-    nodo6 -> nodo8;
-    nodo8 [label="{<f0> Food - Frozen|<f1> Food - Frozen Foods|<f2> Food - Frozen Meals|<f3> Food - Household}|<sig>", fillcolor=lightgreen];
-    nodo6 -> nodo9;
-    nodo9 [label="{<f0> Food - Meat|<f1> Food - Meat Alternatives|<f2> Food - Meats|<f3> Food - Nuts}|<sig>", fillcolor=lightgreen];
-    nodo0 -> nodo10;
-    nodo10 [label="<f0> Food - Seafood|<f1> Garden|<f2> Kitchen|<f3> Pets", fillcolor=lightyellow];
-    nodo10 -> nodo11;
-    nodo11 [label="{<f0> Food - Pasta|<f1> Food - Prepared Meals|<f2> Food - Produce|<f3> Food - Sauces}|<sig>", fillcolor=lightgreen];
-    nodo10 -> nodo12;
-    nodo12 [label="{<f0> Food - Seafood|<f1> Food - Sides|<f2> Food - Snacks|<f3> Food - Vegetables}|<sig>", fillcolor=lightgreen];
-    nodo10 -> nodo13;
-    nodo13 [label="{<f0> Garden|<f1> Health|<f2> Home|<f3> Home Improvement}|<sig>", fillcolor=lightgreen];
-    nodo10 -> nodo14;
-    nodo14 [label="{<f0> Kitchen|<f1> Office|<f2> Outdoor}|<sig>", fillcolor=lightgreen];
-    nodo10 -> nodo15;
-    nodo15 [label="{<f0> Pets|<f1> Photography|<f2> Smart Home|<f3> Toys|<f4> Travel}|<sig>", fillcolor=lightgreen];
+    nodo1 [label="{<f0> Alimentos|<f1> Bebidas|<f2> Enlatados|<f3> Granos}|<sig>", fillcolor=lightgreen];
+    nodo0 -> nodo2;
+    nodo2 [label="{<f0> Lácteos|<f1> Panadería|<f2> Snacks}|<sig>", fillcolor=lightgreen];
 
     // Subgrafo para alinear hojas horizontalmente
     {
         rank=same;
+        nodo1;
         nodo2;
-        nodo3;
-        nodo4;
-        nodo5;
-        nodo7;
-        nodo8;
-        nodo9;
-        nodo11;
-        nodo12;
-        nodo13;
-        nodo14;
-        nodo15;
     }
 
     // Enlaces secuenciales entre hojas (flechas punteadas azules)
     // Demuestran el recorrido O(log N + K) del Arbol B+
-    nodo2:sig -> nodo3:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
-    nodo3:sig -> nodo4:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
-    nodo4:sig -> nodo5:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
-    nodo5:sig -> nodo7:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
-    nodo7:sig -> nodo8:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
-    nodo8:sig -> nodo9:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
-    nodo9:sig -> nodo11:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
-    nodo11:sig -> nodo12:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
-    nodo12:sig -> nodo13:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
-    nodo13:sig -> nodo14:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
-    nodo14:sig -> nodo15:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
+    nodo1:sig -> nodo2:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
 }

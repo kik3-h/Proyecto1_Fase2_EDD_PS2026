@@ -8,6 +8,8 @@
 #include <QDialogButtonBox>
 #include <QPainter>
 #include <QBrush>
+#include <QPen>
+#include <iostream>
 
 
 // Constructor: Inicializa la ventana principal para modo multi-sucursal.
@@ -18,16 +20,29 @@ VentanaPrincipal::VentanaPrincipal(QWidget* parent)
       panelSidebar(nullptr),
       layoutSidebar(nullptr),
       lblTitulo(nullptr),
-      btnCargarCSV(nullptr),
+      btnCargarSucursalesCSV(nullptr),
+      btnCargarConexionesCSV(nullptr),
+      btnCargarProductosCSV(nullptr),
+      btnAgregarSucursal(nullptr),
+      btnModificarSucursal(nullptr),
+      btnEliminarSucursal(nullptr),
       btnInsertar(nullptr),
       btnEliminar(nullptr),
       btnBuscar(nullptr),
       btnReportes(nullptr),
       btnBenchmarking(nullptr),
+      barraSucursal(nullptr),
+      layoutBarraSucursal(nullptr),
+      lblSucursalesRegistradas(nullptr),
+      comboSucursales(nullptr),
+      btnIrASucursal(nullptr),
+      visorGrafo(nullptr),
       tablaProductos(nullptr),
       sucursales(new ListaSucursales()),
       sucursalActual(nullptr),
-      grafo(new GrafoSucursales()) {
+      grafo(new GrafoSucursales()),
+      simulador(new Simulador(grafo, sucursales)),
+      temporizadorSimulacion(new QTimer(this)) {
     
     // Configurar ventana principal
     setWindowTitle("Catalogo P1 EDD KIKE");
@@ -38,15 +53,23 @@ VentanaPrincipal::VentanaPrincipal(QWidget* parent)
     configurarInterfaz();
     aplicarEstilos();
     conectarSenales();
+    temporizadorSimulacion->start(1000);
 
     // Sucursal por defecto para iniciar operaciones de inventario.
     agregarSucursal(1, "Central", "Ciudad de Guatemala", 10, 15, 20);
     seleccionarSucursal(1);
+    refrescarComboSucursales();
+    dibujarGrafo();
     actualizarTabla();
 }
 
 // Destructor
 VentanaPrincipal::~VentanaPrincipal() {
+    if (temporizadorSimulacion != nullptr) {
+        temporizadorSimulacion->stop();
+    }
+    delete simulador;
+    simulador = nullptr;
     liberarSucursales();
     delete grafo;
     grafo = nullptr;
@@ -78,6 +101,8 @@ void VentanaPrincipal::agregarSucursal(int id,
                                            intervaloDespacho);
     sucursales->agregar(nuevaSucursal);
     agregarSucursalAGrafo(id);
+    refrescarComboSucursales();
+    dibujarGrafo();
 }
 
 // agregarSucursalAGrafo: Registra un nodo de sucursal en el grafo de red.
@@ -113,6 +138,7 @@ void VentanaPrincipal::seleccionarSucursal(int id) {
     }
 
     sucursalActual = sucursales->buscar(id);
+    actualizarBarraEstado();
 }
 
 // obtenerSucursalActual: Retorna la sucursal activa actual.
@@ -170,11 +196,15 @@ void VentanaPrincipal::configurarInterfaz() {
     layoutContenido->setContentsMargins(10, 10, 10, 10);
     layoutContenido->setSpacing(10);
     
-    // Configurar barra de búsqueda y tabla
+    // Configurar barra de administración, grafo, búsqueda y tabla
+    configurarBarraSucursal();
+    configurarPanelGrafo();
     configurarBarraBusqueda();
     configurarTabla();
     
-    // Agregar barra de búsqueda y tabla al panel de contenido
+    // Agregar componentes al panel de contenido
+    layoutContenido->addWidget(barraSucursal);
+    layoutContenido->addWidget(visorGrafo);
     layoutContenido->addWidget(barraBusqueda);
     layoutContenido->addWidget(tablaProductos, 1);  // stretch=1 para expandir
 
@@ -200,35 +230,84 @@ void VentanaPrincipal::configurarSidebar() {
     lblTitulo->setObjectName("lblTitulo");
     lblTitulo->setAlignment(Qt::AlignCenter);
 
-    // Crear botones del menú
-    btnCargarCSV = new QPushButton("Cargar CSV", panelSidebar);
-    btnCargarCSV->setObjectName("btnSidebar");
-    btnCargarCSV->setCursor(Qt::PointingHandCursor);
+    // Crear botones del menú - sección Archivos
+    QLabel* lblSeccionArchivos = new QLabel("Archivos", panelSidebar);
+    lblSeccionArchivos->setObjectName("lblSeccionSidebar");
+    btnCargarSucursalesCSV = new QPushButton(panelSidebar);
+    btnCargarSucursalesCSV->setObjectName("btnSidebar");
+    btnCargarSucursalesCSV->setText("Cargar Sucursales CSV");
+    btnCargarSucursalesCSV->setCursor(Qt::PointingHandCursor);
 
+    btnCargarConexionesCSV = new QPushButton(panelSidebar);
+    btnCargarConexionesCSV->setObjectName("btnSidebar");
+    btnCargarConexionesCSV->setText("Cargar Conexiones CSV");
+    btnCargarConexionesCSV->setCursor(Qt::PointingHandCursor);
+
+    btnCargarProductosCSV = new QPushButton(panelSidebar);
+    btnCargarProductosCSV->setObjectName("btnSidebar");
+    btnCargarProductosCSV->setText("Cargar Productos CSV");
+    btnCargarProductosCSV->setCursor(Qt::PointingHandCursor);
+
+    // Sección Sucursales
+    QLabel* lblSeccionSucursales = new QLabel("Sucursales", panelSidebar);
+    lblSeccionSucursales->setObjectName("lblSeccionSidebar");
+    btnAgregarSucursal = new QPushButton(panelSidebar);
+    btnAgregarSucursal->setObjectName("btnSidebar");
+    btnAgregarSucursal->setText("Agregar Sucursal");
+    btnAgregarSucursal->setCursor(Qt::PointingHandCursor);
+
+    btnModificarSucursal = new QPushButton(panelSidebar);
+    btnModificarSucursal->setObjectName("btnSidebar");
+    btnModificarSucursal->setText("Modificar Sucursal");
+    btnModificarSucursal->setCursor(Qt::PointingHandCursor);
+
+    btnEliminarSucursal = new QPushButton(panelSidebar);
+    btnEliminarSucursal->setObjectName("btnSidebar");
+    btnEliminarSucursal->setText("Eliminar Sucursal");
+    btnEliminarSucursal->setCursor(Qt::PointingHandCursor);
+
+    // Sección Inventario
+    QLabel* lblSeccionInventario = new QLabel("Inventario", panelSidebar);
+    lblSeccionInventario->setObjectName("lblSeccionSidebar");
     btnInsertar = new QPushButton("Insertar Producto", panelSidebar);
     btnInsertar->setObjectName("btnSidebar");
+    btnInsertar->setText("Insertar Producto");
     btnInsertar->setCursor(Qt::PointingHandCursor);
 
     btnEliminar = new QPushButton("Eliminar Producto", panelSidebar);
     btnEliminar->setObjectName("btnSidebar");
+    btnEliminar->setText("Eliminar Producto");
     btnEliminar->setCursor(Qt::PointingHandCursor);
 
     btnBuscar = new QPushButton("Buscar Producto", panelSidebar);
     btnBuscar->setObjectName("btnSidebar");
+    btnBuscar->setText("Buscar Producto");
     btnBuscar->setCursor(Qt::PointingHandCursor);
 
     btnReportes = new QPushButton("Generar Reportes", panelSidebar);
     btnReportes->setObjectName("btnSidebar");
+    btnReportes->setText("Generar Reportes");
     btnReportes->setCursor(Qt::PointingHandCursor);
 
     btnBenchmarking = new QPushButton("Pruebas Rendimiento", panelSidebar);
     btnBenchmarking->setObjectName("btnSidebar");
+    btnBenchmarking->setText("Pruebas Rendimiento");
     btnBenchmarking->setCursor(Qt::PointingHandCursor);
 
     // Agregar widgets al layout del sidebar
     layoutSidebar->addWidget(lblTitulo);
-    layoutSidebar->addSpacing(20);
-    layoutSidebar->addWidget(btnCargarCSV);
+    layoutSidebar->addSpacing(12);
+    layoutSidebar->addWidget(lblSeccionArchivos);
+    layoutSidebar->addWidget(btnCargarSucursalesCSV);
+    layoutSidebar->addWidget(btnCargarConexionesCSV);
+    layoutSidebar->addWidget(btnCargarProductosCSV);
+    layoutSidebar->addSpacing(8);
+    layoutSidebar->addWidget(lblSeccionSucursales);
+    layoutSidebar->addWidget(btnAgregarSucursal);
+    layoutSidebar->addWidget(btnModificarSucursal);
+    layoutSidebar->addWidget(btnEliminarSucursal);
+    layoutSidebar->addSpacing(8);
+    layoutSidebar->addWidget(lblSeccionInventario);
     layoutSidebar->addWidget(btnInsertar);
     layoutSidebar->addWidget(btnEliminar);
     layoutSidebar->addWidget(btnBuscar);
@@ -246,6 +325,40 @@ void VentanaPrincipal::configurarSidebar() {
     layoutSidebar->addWidget(lblVersion);
 }
 
+// configurarBarraSucursal: Crea la barra de selección de sucursal para administración.
+// Complejidad: O(1).
+void VentanaPrincipal::configurarBarraSucursal() {
+    barraSucursal = new QWidget(panelContenido);
+    barraSucursal->setObjectName("barraSucursal");
+    barraSucursal->setFixedHeight(52);
+
+    layoutBarraSucursal = new QHBoxLayout(barraSucursal);
+    layoutBarraSucursal->setContentsMargins(8, 6, 8, 6);
+    layoutBarraSucursal->setSpacing(10);
+
+    lblSucursalesRegistradas = new QLabel("Sucursales registradas:", barraSucursal);
+    lblSucursalesRegistradas->setObjectName("lblSucursalesRegistradas");
+
+    comboSucursales = new QComboBox(barraSucursal);
+    comboSucursales->setObjectName("comboSucursales");
+    comboSucursales->setMinimumWidth(280);
+
+    btnIrASucursal = new QPushButton("Ir a Sucursal", barraSucursal);
+    btnIrASucursal->setObjectName("btnIrASucursal");
+    btnIrASucursal->setCursor(Qt::PointingHandCursor);
+    btnIrASucursal->setFixedWidth(140);
+
+    layoutBarraSucursal->addWidget(lblSucursalesRegistradas);
+    layoutBarraSucursal->addWidget(comboSucursales, 1);
+    layoutBarraSucursal->addWidget(btnIrASucursal);
+}
+
+// configurarPanelGrafo: Prepara el contenedor de visualización del grafo de sucursales.
+// Complejidad: O(1).
+void VentanaPrincipal::configurarPanelGrafo() {
+    visorGrafo = new VisorGrafo(panelContenido);
+}
+
 // Configurar la barra de búsqueda avanzada
 void VentanaPrincipal::configurarBarraBusqueda() {
     // Contenedor de la barra de búsqueda
@@ -261,9 +374,10 @@ void VentanaPrincipal::configurarBarraBusqueda() {
     lblBuscarPor = new QLabel("Buscar por:", barraBusqueda);
     lblBuscarPor->setObjectName("lblBuscarPor");
     
-    // ComboBox con tipos de búsqueda (sin Tabla Hash)
+    // ComboBox con tipos de búsqueda
     comboFiltroBusqueda = new QComboBox(barraBusqueda);
     comboFiltroBusqueda->setObjectName("comboFiltroBusqueda");
+    comboFiltroBusqueda->addItem("Codigo de barras (Hash)");
     comboFiltroBusqueda->addItem("Nombre (AVL)");
     comboFiltroBusqueda->addItem("Categoria (B+)");
     comboFiltroBusqueda->addItem("Rango de Fecha (B)");
@@ -272,7 +386,7 @@ void VentanaPrincipal::configurarBarraBusqueda() {
     // Input de búsqueda principal
     inputBusqueda = new QLineEdit(barraBusqueda);
     inputBusqueda->setObjectName("inputBusqueda");
-    inputBusqueda->setPlaceholderText("Nombre del producto...");
+    inputBusqueda->setPlaceholderText("Codigo de barras...");
     inputBusqueda->setMinimumWidth(200);
     
     // Input secundario para rango de fechas (oculto por defecto)
@@ -361,6 +475,13 @@ void VentanaPrincipal::aplicarEstilos() {
             margin-bottom: 10px;
         }
 
+        #lblSeccionSidebar {
+            color: #EDBB00;
+            font-size: 13px;
+            font-weight: bold;
+            margin-top: 6px;
+        }
+
         /* ===== BOTONES DEL SIDEBAR ===== */
         #btnSidebar {
             background-color: #A50044;
@@ -388,6 +509,62 @@ void VentanaPrincipal::aplicarEstilos() {
             color: rgba(255, 255, 255, 0.6);
             font-size: 11px;
             padding: 5px;
+        }
+
+        /* ===== BARRA SUPERIOR DE SUCURSALES ===== */
+        #barraSucursal {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+        }
+
+        #lblSucursalesRegistradas {
+            color: #004D98;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        #comboSucursales {
+            padding: 6px 10px;
+            border: 2px solid #004D98;
+            border-radius: 4px;
+            background-color: white;
+            font-size: 13px;
+        }
+
+        #comboSucursales:hover {
+            border-color: #A50044;
+        }
+
+        #btnIrASucursal {
+            background-color: #004D98;
+            color: white;
+            font-weight: bold;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 14px;
+        }
+
+        #btnIrASucursal:hover {
+            background-color: #A50044;
+        }
+
+        /* ===== PANEL DEL GRAFO ===== */
+        #frameGrafo {
+            background-color: white;
+            border: 1px solid #d8dde3;
+            border-radius: 6px;
+        }
+
+        #lblTituloGrafo {
+            color: #004D98;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        #vistaGrafo {
+            border: 1px solid #e7e9ec;
+            background-color: #ffffff;
         }
 
         /* ===== TABLA DE PRODUCTOS ===== */
@@ -613,12 +790,21 @@ void VentanaPrincipal::aplicarEstilos() {
 // Conectar señales y slots
 void VentanaPrincipal::conectarSenales() {
     // Botones del sidebar
-    connect(btnCargarCSV, &QPushButton::clicked, this, &VentanaPrincipal::onCargarCSV);
+    connect(btnCargarSucursalesCSV, &QPushButton::clicked, this, &VentanaPrincipal::onCargarSucursalesCSV);
+    connect(btnCargarConexionesCSV, &QPushButton::clicked, this, &VentanaPrincipal::onCargarConexionesCSV);
+    connect(btnCargarProductosCSV, &QPushButton::clicked, this, &VentanaPrincipal::onCargarProductosCSV);
+    connect(btnAgregarSucursal, &QPushButton::clicked, this, &VentanaPrincipal::onAgregarSucursal);
+    connect(btnModificarSucursal, &QPushButton::clicked, this, &VentanaPrincipal::onModificarSucursal);
+    connect(btnEliminarSucursal, &QPushButton::clicked, this, &VentanaPrincipal::onEliminarSucursal);
     connect(btnInsertar, &QPushButton::clicked, this, &VentanaPrincipal::onInsertarProducto);
     connect(btnEliminar, &QPushButton::clicked, this, &VentanaPrincipal::onEliminarProducto);
     connect(btnBuscar, &QPushButton::clicked, this, &VentanaPrincipal::onBuscarProducto);
     connect(btnReportes, &QPushButton::clicked, this, &VentanaPrincipal::onGenerarReportes);
     connect(btnBenchmarking, &QPushButton::clicked, this, &VentanaPrincipal::onBenchmarking);
+
+    connect(btnIrASucursal, &QPushButton::clicked, this, &VentanaPrincipal::onIrASucursal);
+    connect(comboSucursales, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &VentanaPrincipal::onCambioSucursalSeleccionada);
     
     // Barra de búsqueda avanzada
     connect(btnEjecutarBusqueda, &QPushButton::clicked, this, &VentanaPrincipal::ejecutarBusquedaAvanzada);
@@ -629,11 +815,154 @@ void VentanaPrincipal::conectarSenales() {
     // Enter en input ejecuta búsqueda
     connect(inputBusqueda, &QLineEdit::returnPressed, this, &VentanaPrincipal::ejecutarBusquedaAvanzada);
     connect(inputBusquedaFin, &QLineEdit::returnPressed, this, &VentanaPrincipal::ejecutarBusquedaAvanzada);
+
+    // Tick de simulación en modo paso temporal de 1 segundo.
+    connect(temporizadorSimulacion, &QTimer::timeout, this, &VentanaPrincipal::onTickSimulacion);
 }
 
-// SLOT: Cargar archivo CSV
-// Usa QFileDialog para seleccionar archivo y carga los datos en las estructuras
-void VentanaPrincipal::onCargarCSV() {
+// onTickSimulacion: Avanza un tick de la simulación y registra trazas en consola.
+// Complejidad: O(e), donde e es la cantidad de eventos activos.
+void VentanaPrincipal::onTickSimulacion() {
+    if (simulador == nullptr) {
+        return;
+    }
+
+    simulador->avanzar();
+    std::cout << "[VentanaPrincipal] Tick de simulacion procesado.\n";
+}
+
+// refrescarComboSucursales: Reconstruye el combo con ID y nombre de sucursales.
+// Complejidad: O(s), donde s es la cantidad de sucursales.
+void VentanaPrincipal::refrescarComboSucursales() {
+    if (comboSucursales == nullptr || sucursales == nullptr) {
+        return;
+    }
+
+    const bool habiaSenales = comboSucursales->blockSignals(true);
+    comboSucursales->clear();
+
+    int indiceSeleccionar = -1;
+    int indiceActual = 0;
+    ListaSucursales::NodoSucursal* nodo = sucursales->obtenerPrimero();
+    while (nodo != nullptr) {
+        Sucursal* sucursal = nodo->dato;
+        if (sucursal != nullptr) {
+            const QString etiqueta = QString("%1 - %2")
+                                         .arg(sucursal->obtenerId())
+                                         .arg(QString::fromStdString(sucursal->obtenerNombre()));
+            comboSucursales->addItem(etiqueta, sucursal->obtenerId());
+            if (sucursalActual != nullptr && sucursal->obtenerId() == sucursalActual->obtenerId()) {
+                indiceSeleccionar = indiceActual;
+            }
+            ++indiceActual;
+        }
+        nodo = nodo->siguiente;
+    }
+
+    if (comboSucursales->count() > 0) {
+        if (indiceSeleccionar >= 0) {
+            comboSucursales->setCurrentIndex(indiceSeleccionar);
+        } else {
+            comboSucursales->setCurrentIndex(0);
+            seleccionarSucursal(obtenerIdSucursalSeleccionada());
+        }
+    } else {
+        sucursalActual = nullptr;
+    }
+
+    comboSucursales->blockSignals(habiaSenales);
+    actualizarBarraEstado();
+}
+
+// obtenerIdSucursalSeleccionada: Obtiene el id asociado al item seleccionado en combo.
+// Complejidad: O(1).
+int VentanaPrincipal::obtenerIdSucursalSeleccionada() const {
+    if (comboSucursales == nullptr || comboSucursales->currentIndex() < 0) {
+        return -1;
+    }
+    return comboSucursales->currentData().toInt();
+}
+
+// dibujarGrafo: Delega la visualización del grafo al componente especializado.
+// Complejidad: O(V + E), donde V son sucursales y E conexiones.
+void VentanaPrincipal::dibujarGrafo() {
+    if (visorGrafo == nullptr || grafo == nullptr) {
+        return;
+    }
+    visorGrafo->dibujarGrafo(grafo, obtenerIdSucursalSeleccionada());
+}
+
+// actualizarBarraEstado: Muestra sucursal actual y cantidad de productos en la barra de estado.
+// Complejidad: O(p), donde p es la cantidad de productos visibles de la sucursal.
+void VentanaPrincipal::actualizarBarraEstado() {
+    if (statusBar() == nullptr) {
+        return;
+    }
+
+    if (!haySucursalSeleccionada()) {
+        statusBar()->showMessage("Sucursal actual: [ninguna] | Productos: 0");
+        return;
+    }
+
+    const int cantidadProductos =
+        static_cast<int>(sucursalActual->obtenerListaGeneral()->obtenerTodos().size());
+    const QString mensaje = QString("Sucursal actual: %1 | Productos: %2")
+                                .arg(QString::fromStdString(sucursalActual->obtenerNombre()))
+                                .arg(cantidadProductos);
+    statusBar()->showMessage(mensaje);
+}
+
+// SLOT: Carga archivo CSV de sucursales.
+// Complejidad: O(n) por cantidad de líneas procesadas.
+void VentanaPrincipal::onCargarSucursalesCSV() {
+    QString archivo = QFileDialog::getOpenFileName(
+        this,
+        "Seleccionar archivo CSV de sucursales",
+        "data/",
+        "Archivos CSV (*.csv);;Todos los archivos (*.*)"
+    );
+
+    if (archivo.isEmpty()) {
+        return;
+    }
+
+    if (!cargadorCSV.cargarSucursales(archivo.toStdString(), *sucursales, *grafo)) {
+        QMessageBox::critical(this, "Error", "No se pudo cargar el archivo de sucursales.");
+        return;
+    }
+
+    refrescarComboSucursales();
+    dibujarGrafo();
+    actualizarTabla();
+    QMessageBox::information(this, "Carga completada", "Sucursales cargadas correctamente.");
+}
+
+// SLOT: Carga archivo CSV de conexiones.
+// Complejidad: O(m) por cantidad de conexiones.
+void VentanaPrincipal::onCargarConexionesCSV() {
+    QString archivo = QFileDialog::getOpenFileName(
+        this,
+        "Seleccionar archivo CSV de conexiones",
+        "data/",
+        "Archivos CSV (*.csv);;Todos los archivos (*.*)"
+    );
+
+    if (archivo.isEmpty()) {
+        return;
+    }
+
+    if (!cargadorCSV.cargarConexiones(archivo.toStdString(), *grafo)) {
+        QMessageBox::critical(this, "Error", "No se pudo cargar el archivo de conexiones.");
+        return;
+    }
+
+    dibujarGrafo();
+    QMessageBox::information(this, "Carga completada", "Conexiones cargadas correctamente.");
+}
+
+// SLOT: Carga productos CSV para la sucursal seleccionada.
+// Complejidad: O(n), por líneas de productos procesadas.
+void VentanaPrincipal::onCargarProductosCSV() {
     if (!haySucursalSeleccionada()) {
         mostrarAdvertenciaSucursalNoSeleccionada();
         return;
@@ -641,45 +970,235 @@ void VentanaPrincipal::onCargarCSV() {
 
     QString archivo = QFileDialog::getOpenFileName(
         this,
-        "Seleccionar archivo CSV",
+        "Seleccionar archivo CSV de productos",
         "data/",
         "Archivos CSV (*.csv);;Todos los archivos (*.*)"
     );
 
     if (archivo.isEmpty()) {
-        return;  // Usuario canceló
+        return;
     }
 
-    // Convertir QString a std::string y cargar
-    std::string rutaArchivo = archivo.toStdString();
-
-    cargadorCSV.cargar(
-        rutaArchivo,
+    const int idSucursal = sucursalActual->obtenerId();
+    const bool cargado = cargadorCSV.cargar(
+        archivo.toStdString(),
         *(sucursalActual->obtenerListaGeneral()),
         *(sucursalActual->obtenerListaOrdenada()),
         *(sucursalActual->obtenerTablaHash()),
         *(sucursalActual->obtenerArbolAVL()),
         *(sucursalActual->obtenerArbolB()),
-        *(sucursalActual->obtenerArbolBPlus())
+        *(sucursalActual->obtenerArbolBPlus()),
+        idSucursal
     );
 
-    // Actualizar la tabla con los nuevos datos
+    if (!cargado) {
+        QMessageBox::critical(this, "Error", "No se pudo cargar el archivo de productos.");
+        return;
+    }
+
     actualizarTabla();
+    QMessageBox::information(this, "Carga completada", "Productos cargados correctamente.");
+}
 
-    // Mostrar mensaje de éxito
-    int cantidadProductos = static_cast<int>(sucursalActual->obtenerListaGeneral()->obtenerTodos().size());
-    QMessageBox::information(
+// SLOT: Agrega sucursal desde formulario.
+// Complejidad: O(s) por validación de id duplicado.
+void VentanaPrincipal::onAgregarSucursal() {
+    QDialog dialogo(this);
+    dialogo.setWindowTitle("Agregar Sucursal");
+    dialogo.setMinimumWidth(420);
+
+    QVBoxLayout* layout = new QVBoxLayout(&dialogo);
+    QFormLayout* form = new QFormLayout();
+
+    QLineEdit* inputId = new QLineEdit(&dialogo);
+    inputId->setValidator(new QIntValidator(0, 999999, &dialogo));
+    QLineEdit* inputNombre = new QLineEdit(&dialogo);
+    QLineEdit* inputUbicacion = new QLineEdit(&dialogo);
+    QLineEdit* inputIngreso = new QLineEdit(&dialogo);
+    inputIngreso->setValidator(new QIntValidator(0, 100000, &dialogo));
+    QLineEdit* inputPreparacion = new QLineEdit(&dialogo);
+    inputPreparacion->setValidator(new QIntValidator(0, 100000, &dialogo));
+    QLineEdit* inputDespacho = new QLineEdit(&dialogo);
+    inputDespacho->setValidator(new QIntValidator(0, 100000, &dialogo));
+
+    form->addRow("ID:", inputId);
+    form->addRow("Nombre:", inputNombre);
+    form->addRow("Ubicación:", inputUbicacion);
+    form->addRow("Tiempo ingreso:", inputIngreso);
+    form->addRow("Tiempo traspaso:", inputPreparacion);
+    form->addRow("Intervalo despacho:", inputDespacho);
+    layout->addLayout(form);
+
+    QDialogButtonBox* botones = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+                                                      Qt::Horizontal,
+                                                      &dialogo);
+    layout->addWidget(botones);
+    connect(botones, &QDialogButtonBox::accepted, &dialogo, &QDialog::accept);
+    connect(botones, &QDialogButtonBox::rejected, &dialogo, &QDialog::reject);
+
+    if (dialogo.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    if (inputId->text().trimmed().isEmpty() ||
+        inputNombre->text().trimmed().isEmpty() ||
+        inputUbicacion->text().trimmed().isEmpty() ||
+        inputIngreso->text().trimmed().isEmpty() ||
+        inputPreparacion->text().trimmed().isEmpty() ||
+        inputDespacho->text().trimmed().isEmpty()) {
+        QMessageBox::warning(this, "Datos incompletos", "Complete todos los campos.");
+        return;
+    }
+
+    const int id = inputId->text().toInt();
+    if (sucursales->buscar(id) != nullptr) {
+        QMessageBox::warning(this, "ID duplicado", "Ya existe una sucursal con ese ID.");
+        return;
+    }
+
+    agregarSucursal(id,
+                    inputNombre->text().toStdString(),
+                    inputUbicacion->text().toStdString(),
+                    inputIngreso->text().toInt(),
+                    inputPreparacion->text().toInt(),
+                    inputDespacho->text().toInt());
+    seleccionarSucursal(id);
+    refrescarComboSucursales();
+    dibujarGrafo();
+    actualizarTabla();
+}
+
+// SLOT: Modifica metadatos de la sucursal seleccionada.
+// Complejidad: O(1).
+void VentanaPrincipal::onModificarSucursal() {
+    if (!haySucursalSeleccionada()) {
+        mostrarAdvertenciaSucursalNoSeleccionada();
+        return;
+    }
+
+    QDialog dialogo(this);
+    dialogo.setWindowTitle("Modificar Sucursal");
+    dialogo.setMinimumWidth(420);
+
+    QVBoxLayout* layout = new QVBoxLayout(&dialogo);
+    QFormLayout* form = new QFormLayout();
+
+    QLineEdit* inputNombre = new QLineEdit(QString::fromStdString(sucursalActual->obtenerNombre()), &dialogo);
+    QLineEdit* inputUbicacion = new QLineEdit(QString::fromStdString(sucursalActual->obtenerUbicacion()), &dialogo);
+    QLineEdit* inputIngreso = new QLineEdit(QString::number(sucursalActual->obtenerTiempoIngreso()), &dialogo);
+    inputIngreso->setValidator(new QIntValidator(0, 100000, &dialogo));
+    QLineEdit* inputPreparacion = new QLineEdit(QString::number(sucursalActual->obtenerTiempoPreparacion()), &dialogo);
+    inputPreparacion->setValidator(new QIntValidator(0, 100000, &dialogo));
+    QLineEdit* inputDespacho = new QLineEdit(QString::number(sucursalActual->obtenerIntervaloDespacho()), &dialogo);
+    inputDespacho->setValidator(new QIntValidator(0, 100000, &dialogo));
+
+    form->addRow("Nombre:", inputNombre);
+    form->addRow("Ubicación:", inputUbicacion);
+    form->addRow("Tiempo ingreso:", inputIngreso);
+    form->addRow("Tiempo traspaso:", inputPreparacion);
+    form->addRow("Intervalo despacho:", inputDespacho);
+    layout->addLayout(form);
+
+    QDialogButtonBox* botones = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+                                                      Qt::Horizontal,
+                                                      &dialogo);
+    layout->addWidget(botones);
+    connect(botones, &QDialogButtonBox::accepted, &dialogo, &QDialog::accept);
+    connect(botones, &QDialogButtonBox::rejected, &dialogo, &QDialog::reject);
+
+    if (dialogo.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    sucursalActual->establecerNombre(inputNombre->text().trimmed().toStdString());
+    sucursalActual->establecerUbicacion(inputUbicacion->text().trimmed().toStdString());
+    sucursalActual->establecerTiempoIngreso(inputIngreso->text().toInt());
+    sucursalActual->establecerTiempoPreparacion(inputPreparacion->text().toInt());
+    sucursalActual->establecerIntervaloDespacho(inputDespacho->text().toInt());
+
+    refrescarComboSucursales();
+    dibujarGrafo();
+    actualizarBarraEstado();
+}
+
+// SLOT: Elimina la sucursal seleccionada de la lista enlazada.
+// Complejidad: O(s).
+void VentanaPrincipal::onEliminarSucursal() {
+    const int idSeleccionado = obtenerIdSucursalSeleccionada();
+    if (idSeleccionado < 0) {
+        QMessageBox::warning(this, "Sin selección", "No hay sucursal seleccionada.");
+        return;
+    }
+
+    Sucursal* sucursalEliminar = sucursales->buscar(idSeleccionado);
+    if (sucursalEliminar == nullptr) {
+        QMessageBox::warning(this, "No encontrada", "La sucursal seleccionada no existe.");
+        return;
+    }
+
+    const QMessageBox::StandardButton respuesta = QMessageBox::question(
         this,
-        "Carga Exitosa",
-        QString("Se cargaron %1 productos correctamente.\n\nArchivo: %2")
-            .arg(cantidadProductos)
-            .arg(archivo)
+        "Eliminar sucursal",
+        QString("¿Desea eliminar la sucursal %1?").arg(idSeleccionado),
+        QMessageBox::Yes | QMessageBox::No
     );
+    if (respuesta != QMessageBox::Yes) {
+        return;
+    }
+
+    const bool eliminada = sucursales->eliminar(idSeleccionado);
+    if (!eliminada) {
+        QMessageBox::critical(this, "Error", "No se pudo eliminar la sucursal.");
+        return;
+    }
+
+    if (sucursalActual == sucursalEliminar) {
+        sucursalActual = nullptr;
+    }
+    delete sucursalEliminar;
+
+    refrescarComboSucursales();
+    dibujarGrafo();
+    actualizarTabla();
+}
+
+// SLOT: Cambia la sucursal activa según selección del combo.
+// Complejidad: O(s).
+void VentanaPrincipal::onCambioSucursalSeleccionada(int indice) {
+    Q_UNUSED(indice)
+    const int id = obtenerIdSucursalSeleccionada();
+    if (id < 0) {
+        return;
+    }
+
+    seleccionarSucursal(id);
+    actualizarTabla();
+    dibujarGrafo();
+}
+
+// SLOT: Acción de navegación hacia sucursal seleccionada.
+// Complejidad: O(1).
+void VentanaPrincipal::onIrASucursal() {
+    const int id = obtenerIdSucursalSeleccionada();
+    if (id < 0) {
+        QMessageBox::warning(this, "Sin selección", "Seleccione una sucursal.");
+        return;
+    }
+
+    seleccionarSucursal(id);
+    std::cout << "Viajando a sucursal [" << id << "]\n";
+    actualizarTabla();
+    dibujarGrafo();
 }
 
 // SLOT: Actualizar tabla de productos
 // Obtiene todos los productos de la lista y los muestra en el QTableWidget
 void VentanaPrincipal::actualizarTabla() {
+    const int idCombo = obtenerIdSucursalSeleccionada();
+    if (idCombo >= 0) {
+        seleccionarSucursal(idCombo);
+    }
+
     // Deshabilitar ordenamiento temporalmente para evitar problemas
     tablaProductos->setSortingEnabled(false);
     
@@ -688,6 +1207,7 @@ void VentanaPrincipal::actualizarTabla() {
 
     if (!haySucursalSeleccionada()) {
         tablaProductos->setSortingEnabled(true);
+        actualizarBarraEstado();
         return;
     }
 
@@ -733,6 +1253,7 @@ void VentanaPrincipal::actualizarTabla() {
 
     // Reactivar ordenamiento
     tablaProductos->setSortingEnabled(true);
+    actualizarBarraEstado();
 }
 
 // SLOT: Insertar nuevo producto
@@ -866,6 +1387,13 @@ void VentanaPrincipal::onInsertarProducto() {
         QMessageBox::warning(this, "Error",
             "No se pudo insertar el producto en la sucursal seleccionada.");
         return;
+    }
+
+    // Se programa traslado inicial en la misma sucursal para activar el flujo
+    // de estados y trazas de simulación desde consola.
+    if (simulador != nullptr && sucursalActual != nullptr) {
+        const int idSucursal = sucursalActual->obtenerId();
+        simulador->programarEnvio(nuevoProducto, idSucursal, idSucursal, true);
     }
 
     // Actualizar tabla
@@ -1204,19 +1732,22 @@ void VentanaPrincipal::onBenchmarking() {
 // Muestra/oculta el input de fecha fin según selección
 
 void VentanaPrincipal::onCambioFiltroBusqueda(int indice) {
-    // Índice 2 = "Rango de Fecha (B)" (ahora sin Hash)
-    bool esRango = (indice == 2);
+    // Índice 3 = "Rango de Fecha (B)".
+    bool esRango = (indice == 3);
     inputBusquedaFin->setVisible(esRango);
     
     // Actualizar placeholder según tipo de búsqueda
     switch (indice) {
-        case 0:  // Nombre (AVL)
+        case 0:  // Codigo de barras (Hash)
+            inputBusqueda->setPlaceholderText("Codigo de barras...");
+            break;
+        case 1:  // Nombre (AVL)
             inputBusqueda->setPlaceholderText("Nombre del producto...");
             break;
-        case 1:  // Categoría (B+)
+        case 2:  // Categoria (B+)
             inputBusqueda->setPlaceholderText("Categoria (ej: Lacteos)...");
             break;
-        case 2:  // Rango de Fecha (B)
+        case 3:  // Rango de Fecha (B)
             inputBusqueda->setPlaceholderText("Fecha inicio (YYYY-MM-DD)");
             break;
     }
@@ -1244,18 +1775,25 @@ void VentanaPrincipal::ejecutarBusquedaAvanzada() {
     std::vector<Producto*> resultados;
     
     switch (filtro) {
-        case 0: {  // Nombre (AVL)
+        case 0: {  // Codigo de barras (Hash)
+            Producto* p = sucursalActual->buscarPorCodigo(termino.toStdString());
+            if (p != nullptr) {
+                resultados.push_back(p);
+            }
+            break;
+        }
+        case 1: {  // Nombre (AVL)
             Producto* p = sucursalActual->buscarPorNombre(termino.toStdString());
             if (p != nullptr) {
                 resultados.push_back(p);
             }
             break;
         }
-        case 1: {  // Categoría (B+)
+        case 2: {  // Categoria (B+)
             resultados = sucursalActual->buscarPorCategoria(termino.toStdString());
             break;
         }
-        case 2: {  // Rango de Fecha (B)
+        case 3: {  // Rango de Fecha (B)
             QString fechaFin = inputBusquedaFin->text().trimmed();
             if (fechaFin.isEmpty()) {
                 QMessageBox::warning(this, "Fecha Fin Requerida",

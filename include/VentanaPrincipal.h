@@ -20,13 +20,12 @@
 #include <QFormLayout>
 #include <QDir>
 #include <QTextEdit>
-#include <QGraphicsView>
-#include <QGraphicsScene>
 #include <QPixmap>
 #include <QTabWidget>
 #include <QFontDatabase>
 #include <QWheelEvent>
 #include <QSlider>
+#include <QTimer>
 #include <string>
 #include <vector>
 
@@ -36,6 +35,8 @@
 #include "CargadorCSV.h"
 #include "MedidorRendimiento.h"
 #include "GrafoSucursales.h"
+#include "Simulador.h"
+#include "VisorGrafo.h"
 
 // VentanaPrincipal: Ventana principal de la aplicación con tema FC Barcelona en teoria jaksjas
 // Hereda de QMainWindow para proporcionar menús, barras de herramientas, etc.
@@ -73,13 +74,21 @@ public:
 
 private slots:
     // Slots para manejar eventos de botones
-    void onCargarCSV();
+    void onCargarSucursalesCSV();
+    void onCargarConexionesCSV();
+    void onCargarProductosCSV();
+    void onAgregarSucursal();
+    void onModificarSucursal();
+    void onEliminarSucursal();
+    void onIrASucursal();
+    void onCambioSucursalSeleccionada(int indice);
     void onInsertarProducto();
     void onEliminarProducto();
     void onBuscarProducto();
     void onGenerarReportes();
     void onBenchmarking();
     void actualizarTabla();
+    void onTickSimulacion();
     
     // Nuevos slots para búsqueda avanzada (Fase 7C)
     void ejecutarBusquedaAvanzada();
@@ -98,7 +107,12 @@ private:
     QLabel* lblTitulo;
 
     // Botones del sidebar
-    QPushButton* btnCargarCSV;
+    QPushButton* btnCargarSucursalesCSV;
+    QPushButton* btnCargarConexionesCSV;
+    QPushButton* btnCargarProductosCSV;
+    QPushButton* btnAgregarSucursal;
+    QPushButton* btnModificarSucursal;
+    QPushButton* btnEliminarSucursal;
     QPushButton* btnInsertar;
     QPushButton* btnEliminar;
     QPushButton* btnBuscar;
@@ -118,6 +132,16 @@ private:
     QLineEdit* inputBusquedaFin;  // Para rango de fechas
     QPushButton* btnEjecutarBusqueda;
     QPushButton* btnMostrarTodos;
+
+    // Barra de selección de sucursal para administración.
+    QWidget* barraSucursal;
+    QHBoxLayout* layoutBarraSucursal;
+    QLabel* lblSucursalesRegistradas;
+    QComboBox* comboSucursales;
+    QPushButton* btnIrASucursal;
+
+    // Panel de visualización del grafo.
+    VisorGrafo* visorGrafo;
     
     // Tabla de productos
     QTableWidget* tablaProductos;
@@ -126,6 +150,8 @@ private:
     ListaSucursales* sucursales;
     Sucursal* sucursalActual;
     GrafoSucursales* grafo;
+    Simulador* simulador;
+    QTimer* temporizadorSimulacion;
     
     // Cargador de CSV (propio de la ventana)
     CargadorCSV cargadorCSV;
@@ -133,10 +159,16 @@ private:
     // Métodos de inicialización
     void configurarInterfaz();
     void configurarSidebar();
+    void configurarBarraSucursal();
+    void configurarPanelGrafo();
     void configurarBarraBusqueda();
     void configurarTabla();
     void aplicarEstilos();
     void conectarSenales();
+    void refrescarComboSucursales();
+    int obtenerIdSucursalSeleccionada() const;
+    void dibujarGrafo();
+    void actualizarBarraEstado();
     bool haySucursalSeleccionada() const;
     void mostrarAdvertenciaSucursalNoSeleccionada();
     void liberarSucursales();
