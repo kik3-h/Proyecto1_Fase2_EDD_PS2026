@@ -5,6 +5,7 @@
 #include <QGraphicsTextItem>
 #include <QPainter>
 #include <QPen>
+#include <QWheelEvent>
 
 #include <cmath>
 
@@ -27,6 +28,13 @@ VisorGrafo::VisorGrafo(QWidget* parent)
     vistaGrafo->setRenderHint(QPainter::TextAntialiasing);
     vistaGrafo->setMinimumHeight(210);
 
+    // Habilitar navegación con arrastre y transformación bajo el ratón
+    vistaGrafo->setDragMode(QGraphicsView::ScrollHandDrag);
+    vistaGrafo->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
+
+    // Instalar filtro de eventos en vistaGrafo para capturar zoom con rueda
+    vistaGrafo->installEventFilter(this);
+
     layoutPrincipal->addWidget(vistaGrafo, 1);
 }
 
@@ -38,6 +46,23 @@ void VisorGrafo::limpiar() {
     if (escenaGrafo != nullptr) {
         escenaGrafo->clear();
     }
+}
+
+// eventFilter: Captura eventos de rueda del ratón para implementar zoom.
+// Complejidad: O(1) - solo realiza transformación de escala.
+bool VisorGrafo::eventFilter(QObject* obj, QEvent* event) {
+    if (obj == vistaGrafo && event->type() == QEvent::Wheel) {
+        QWheelEvent* wheelEvent = static_cast<QWheelEvent*>(event);
+        const double scaleFactor = 1.15;
+        
+        if (wheelEvent->angleDelta().y() > 0) {
+            vistaGrafo->scale(scaleFactor, scaleFactor);
+        } else {
+            vistaGrafo->scale(1.0 / scaleFactor, 1.0 / scaleFactor);
+        }
+        return true;
+    }
+    return QFrame::eventFilter(obj, event);
 }
 
 // dibujarGrafo: Renderiza nodos y aristas del grafo con una distribución circular.
@@ -94,16 +119,18 @@ void VisorGrafo::dibujarGrafo(GrafoSucursales* grafo, int idSeleccionado) {
     const qreal centroX = 0.0;
     const qreal centroY = 0.0;
     const qreal radioNodo = 18.0;
-    const qreal separacionMinima = 24.0;
+    const qreal separacionMinima = 18.0;
 
     const qreal pi = 3.14159265358979323846;
     const qreal circunferenciaMinima =
         static_cast<qreal>(cantidadNodos) * ((radioNodo * 2.0) + separacionMinima);
     const qreal radioPorCantidad = circunferenciaMinima / (2.0 * pi);
-    qreal radioBase = ((anchoVista < altoVista ? anchoVista : altoVista) / 2.0) - 70.0;
+    qreal radioBase = ((anchoVista < altoVista ? anchoVista : altoVista) / 2.0) - 120.0;
     if (radioBase < 90.0) {
         radioBase = 90.0;
     }
+    // El radio final privilegia una distribución amplia para evitar que las etiquetas
+    // de las aristas queden superpuestas con los nodos.
     const qreal radioLayout = (radioPorCantidad > radioBase) ? radioPorCantidad : radioBase;
 
     for (int i = 0; i < cantidadNodos; ++i) {
@@ -172,7 +199,7 @@ void VisorGrafo::dibujarGrafo(GrafoSucursales* grafo, int idSeleccionado) {
     }
 
     const QRectF limites = escenaGrafo->itemsBoundingRect();
-    escenaGrafo->setSceneRect(limites.adjusted(-45.0, -45.0, 45.0, 45.0));
+    escenaGrafo->setSceneRect(limites.adjusted(-80.0, -80.0, 80.0, 80.0));
     vistaGrafo->fitInView(escenaGrafo->sceneRect(), Qt::KeepAspectRatio);
 
     delete[] posicionesY;

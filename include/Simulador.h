@@ -33,6 +33,7 @@ private:
     ListaSucursales* sucursales;
     Cola* eventosPendientes;
     long long tickActual;
+    int factorAceleracion;
 
     // Busca una sucursal por id en la lista enlazada. Complejidad O(s).
     Sucursal* buscarSucursalPorId(int idSucursal) const;
@@ -64,6 +65,9 @@ public:
 
     // Libera cola de eventos y memoria auxiliar de rutas, sin destruir productos. O(e + r).
     ~Simulador();
+
+    // Ajusta el factor de aceleracion de la simulacion. Complejidad O(1).
+    void establecerFactorAceleracion(int nuevoFactor);
 
     // Crea un evento de traslado y lo coloca en la cola de pendientes. O(1).
     void programarEnvio(Producto* producto, int origen, int destino, bool porTiempo);

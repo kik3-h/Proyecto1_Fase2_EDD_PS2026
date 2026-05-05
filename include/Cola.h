@@ -7,7 +7,7 @@
 #include "Producto.h"
 
 class Cola {
-private:
+public:
     struct NodoCola {
         Producto* dato;
         NodoCola* siguiente;
@@ -15,6 +15,7 @@ private:
         explicit NodoCola(Producto* producto);
     };
 
+private:
     NodoCola* frente;
     NodoCola* final;
 
@@ -33,6 +34,9 @@ public:
 
     // Retorna el frente sin removerlo. O(1).
     Producto* verFrente() const;
+
+    // Retorna el nodo frontal para iteracion sin modificar la cola. O(1).
+    NodoCola* obtenerFrente() const;
 
     // Indica si la cola está vacía. O(1).
     bool vacia() const;

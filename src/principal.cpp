@@ -2,6 +2,7 @@
 // Catálogo de Productos - Proyecto EDD 2026
 
 #include <QApplication>
+#include <QFont>
 #include "VentanaPrincipal.h"
 
 int main(int argc, char* argv[]) {
@@ -12,6 +13,11 @@ int main(int argc, char* argv[]) {
     QApplication::setApplicationName("Catálogo de Productos EDD");
     QApplication::setApplicationVersion("1.0.0");
     QApplication::setOrganizationName("USAC - EDD 2026");
+
+    // Fijar una fuente legible para toda la interfaz antes de crear la ventana principal.
+    QFont fuente = QApplication::font();
+    fuente.setFamily("Segoe UI");
+    QApplication::setFont(fuente);
 
     // Crear ventana principal (gestiona sucursales e inventarios internamente).
     VentanaPrincipal ventana;

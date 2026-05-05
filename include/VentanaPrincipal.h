@@ -77,6 +77,7 @@ private slots:
     void onCargarSucursalesCSV();
     void onCargarConexionesCSV();
     void onCargarProductosCSV();
+    void onCargarTrasladosCSV();
     void onAgregarSucursal();
     void onModificarSucursal();
     void onEliminarSucursal();
@@ -110,6 +111,7 @@ private:
     QPushButton* btnCargarSucursalesCSV;
     QPushButton* btnCargarConexionesCSV;
     QPushButton* btnCargarProductosCSV;
+    QPushButton* btnCargarTrasladosCSV;
     QPushButton* btnAgregarSucursal;
     QPushButton* btnModificarSucursal;
     QPushButton* btnEliminarSucursal;

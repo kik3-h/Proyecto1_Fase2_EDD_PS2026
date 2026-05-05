@@ -1,5 +1,9 @@
 #include "VentanaPrincipal.h"
+#include "VentanaSucursal.h"
 
+#include <cerrno>
+#include <cstdlib>
+#include <fstream>
 #include <vector>
 #include <QTableWidgetItem>
 #include <QDoubleValidator>
@@ -10,6 +14,161 @@
 #include <QBrush>
 #include <QPen>
 #include <iostream>
+
+namespace {
+// Elimina espacios y comillas externas de un campo CSV. Complejidad O(L).
+std::string limpiarCampoCSV(const std::string& campo) {
+    if (campo.empty()) {
+        return campo;
+    }
+
+    std::size_t inicio = 0;
+    std::size_t fin = campo.size();
+
+    while (inicio < fin &&
+           (campo[inicio] == ' ' || campo[inicio] == '\t' || campo[inicio] == '\r')) {
+        ++inicio;
+    }
+
+    while (fin > inicio &&
+           (campo[fin - 1] == ' ' || campo[fin - 1] == '\t' || campo[fin - 1] == '\r')) {
+        --fin;
+    }
+
+    if (inicio >= fin) {
+        return "";
+    }
+
+    std::string limpio = campo.substr(inicio, fin - inicio);
+    if (limpio.size() >= 2 && limpio.front() == '"' && limpio.back() == '"') {
+        limpio = limpio.substr(1, limpio.size() - 2);
+    }
+    return limpio;
+}
+
+// Normaliza texto para comparar encabezados sin depender de mayúsculas o espacios.
+// Complejidad O(L).
+std::string normalizarTextoCSV(const std::string& texto) {
+    std::string resultado = texto;
+    for (char& caracter : resultado) {
+        if (caracter >= 'A' && caracter <= 'Z') {
+            caracter = static_cast<char>(caracter + ('a' - 'A'));
+        } else if (caracter == ' ') {
+            caracter = '_';
+        }
+    }
+    return resultado;
+}
+
+// Divide una linea CSV con soporte para comillas simples de campo.
+// Complejidad O(L), donde L es la longitud de la linea.
+bool dividirLineaCSVLocal(const std::string& linea,
+                          std::string* campos,
+                          int maxCampos,
+                          int& cantidadCampos) {
+    if (campos == nullptr || maxCampos <= 0) {
+        return false;
+    }
+
+    cantidadCampos = 0;
+    std::string campoActual;
+    bool enComillas = false;
+
+    for (std::size_t i = 0; i < linea.size(); ++i) {
+        const char caracter = linea[i];
+        if (caracter == '"') {
+            enComillas = !enComillas;
+            campoActual += caracter;
+            continue;
+        }
+
+        if (caracter == ',' && !enComillas) {
+            if (cantidadCampos >= maxCampos) {
+                return false;
+            }
+            campos[cantidadCampos] = limpiarCampoCSV(campoActual);
+            campoActual.clear();
+            ++cantidadCampos;
+            continue;
+        }
+
+        campoActual += caracter;
+    }
+
+    if (enComillas) {
+        return false;
+    }
+
+    if (cantidadCampos >= maxCampos) {
+        return false;
+    }
+
+    campos[cantidadCampos] = limpiarCampoCSV(campoActual);
+    ++cantidadCampos;
+    return true;
+}
+
+// Convierte una cadena a entero sin excepciones. Complejidad O(L).
+bool convertirEnteroCSV(const std::string& texto, int& salida) {
+    if (texto.empty()) {
+        return false;
+    }
+
+    char* fin = nullptr;
+    errno = 0;
+    const long valor = std::strtol(texto.c_str(), &fin, 10);
+    if (errno != 0 || fin == texto.c_str() || *fin != '\0') {
+        return false;
+    }
+
+    salida = static_cast<int>(valor);
+    return true;
+}
+
+// Detecta una cabecera de traslados con o sin espacios adicionales.
+// Complejidad O(1).
+bool esCabeceraTrasladosCSV(const std::string* campos, int cantidadCampos) {
+    if (campos == nullptr || cantidadCampos != 3) {
+        return false;
+    }
+
+    const std::string c0 = normalizarTextoCSV(campos[0]);
+    const std::string c1 = normalizarTextoCSV(campos[1]);
+    const std::string c2 = normalizarTextoCSV(campos[2]);
+
+    return (c0 == "origen" &&
+            c1 == "destino" &&
+            (c2 == "productoid" || c2 == "producto_id" || c2 == "codigo" || c2 == "codigo_barras"));
+}
+
+// Registra un error de carga en errors.log. Complejidad O(1).
+void registrarErrorCSV(std::ofstream& archivoErrores,
+                       int numeroLinea,
+                       const std::string& motivo,
+                       const std::string& lineaOriginal) {
+    archivoErrores << "Linea " << numeroLinea << " | " << motivo
+                   << " | Contenido: " << lineaOriginal << '\n';
+}
+
+struct TransferenciaCSV {
+    int origen;
+    int destino;
+    std::string productoId;
+};
+
+// Verifica si una transferencia ya fue procesada en este archivo. Complejidad O(n).
+bool transferenciaDuplicada(const std::vector<TransferenciaCSV>& procesadas,
+                            const TransferenciaCSV& actual) {
+    for (std::size_t i = 0; i < procesadas.size(); ++i) {
+        if (procesadas[i].origen == actual.origen &&
+            procesadas[i].destino == actual.destino &&
+            procesadas[i].productoId == actual.productoId) {
+            return true;
+        }
+    }
+    return false;
+}
+}  // namespace
 
 
 // Constructor: Inicializa la ventana principal para modo multi-sucursal.
@@ -23,6 +182,7 @@ VentanaPrincipal::VentanaPrincipal(QWidget* parent)
       btnCargarSucursalesCSV(nullptr),
       btnCargarConexionesCSV(nullptr),
       btnCargarProductosCSV(nullptr),
+      btnCargarTrasladosCSV(nullptr),
       btnAgregarSucursal(nullptr),
       btnModificarSucursal(nullptr),
       btnEliminarSucursal(nullptr),
@@ -48,6 +208,10 @@ VentanaPrincipal::VentanaPrincipal(QWidget* parent)
     setWindowTitle("Catalogo P1 EDD KIKE");
     setMinimumSize(1200, 700);
     resize(1400, 800);
+
+    if (simulador != nullptr) {
+        simulador->establecerFactorAceleracion(1000);
+    }
 
     // Inicializar componentes
     configurarInterfaz();
@@ -237,16 +401,25 @@ void VentanaPrincipal::configurarSidebar() {
     btnCargarSucursalesCSV->setObjectName("btnSidebar");
     btnCargarSucursalesCSV->setText("Cargar Sucursales CSV");
     btnCargarSucursalesCSV->setCursor(Qt::PointingHandCursor);
+    std::cout << "Botón creado: " << btnCargarSucursalesCSV->text().toStdString() << std::endl;
 
     btnCargarConexionesCSV = new QPushButton(panelSidebar);
     btnCargarConexionesCSV->setObjectName("btnSidebar");
     btnCargarConexionesCSV->setText("Cargar Conexiones CSV");
     btnCargarConexionesCSV->setCursor(Qt::PointingHandCursor);
+    std::cout << "Botón creado: " << btnCargarConexionesCSV->text().toStdString() << std::endl;
 
     btnCargarProductosCSV = new QPushButton(panelSidebar);
     btnCargarProductosCSV->setObjectName("btnSidebar");
     btnCargarProductosCSV->setText("Cargar Productos CSV");
     btnCargarProductosCSV->setCursor(Qt::PointingHandCursor);
+    std::cout << "Botón creado: " << btnCargarProductosCSV->text().toStdString() << std::endl;
+
+    btnCargarTrasladosCSV = new QPushButton(panelSidebar);
+    btnCargarTrasladosCSV->setObjectName("btnSidebar");
+    btnCargarTrasladosCSV->setText("Cargar Traslados CSV");
+    btnCargarTrasladosCSV->setCursor(Qt::PointingHandCursor);
+    std::cout << "Botón creado: " << btnCargarTrasladosCSV->text().toStdString() << std::endl;
 
     // Sección Sucursales
     QLabel* lblSeccionSucursales = new QLabel("Sucursales", panelSidebar);
@@ -255,16 +428,19 @@ void VentanaPrincipal::configurarSidebar() {
     btnAgregarSucursal->setObjectName("btnSidebar");
     btnAgregarSucursal->setText("Agregar Sucursal");
     btnAgregarSucursal->setCursor(Qt::PointingHandCursor);
+    std::cout << "Botón creado: " << btnAgregarSucursal->text().toStdString() << std::endl;
 
     btnModificarSucursal = new QPushButton(panelSidebar);
     btnModificarSucursal->setObjectName("btnSidebar");
     btnModificarSucursal->setText("Modificar Sucursal");
     btnModificarSucursal->setCursor(Qt::PointingHandCursor);
+    std::cout << "Botón creado: " << btnModificarSucursal->text().toStdString() << std::endl;
 
     btnEliminarSucursal = new QPushButton(panelSidebar);
     btnEliminarSucursal->setObjectName("btnSidebar");
     btnEliminarSucursal->setText("Eliminar Sucursal");
     btnEliminarSucursal->setCursor(Qt::PointingHandCursor);
+    std::cout << "Botón creado: " << btnEliminarSucursal->text().toStdString() << std::endl;
 
     // Sección Inventario
     QLabel* lblSeccionInventario = new QLabel("Inventario", panelSidebar);
@@ -273,26 +449,31 @@ void VentanaPrincipal::configurarSidebar() {
     btnInsertar->setObjectName("btnSidebar");
     btnInsertar->setText("Insertar Producto");
     btnInsertar->setCursor(Qt::PointingHandCursor);
+    std::cout << "Botón creado: " << btnInsertar->text().toStdString() << std::endl;
 
     btnEliminar = new QPushButton("Eliminar Producto", panelSidebar);
     btnEliminar->setObjectName("btnSidebar");
     btnEliminar->setText("Eliminar Producto");
     btnEliminar->setCursor(Qt::PointingHandCursor);
+    std::cout << "Botón creado: " << btnEliminar->text().toStdString() << std::endl;
 
     btnBuscar = new QPushButton("Buscar Producto", panelSidebar);
     btnBuscar->setObjectName("btnSidebar");
     btnBuscar->setText("Buscar Producto");
     btnBuscar->setCursor(Qt::PointingHandCursor);
+    std::cout << "Botón creado: " << btnBuscar->text().toStdString() << std::endl;
 
     btnReportes = new QPushButton("Generar Reportes", panelSidebar);
     btnReportes->setObjectName("btnSidebar");
     btnReportes->setText("Generar Reportes");
     btnReportes->setCursor(Qt::PointingHandCursor);
+    std::cout << "Botón creado: " << btnReportes->text().toStdString() << std::endl;
 
     btnBenchmarking = new QPushButton("Pruebas Rendimiento", panelSidebar);
     btnBenchmarking->setObjectName("btnSidebar");
     btnBenchmarking->setText("Pruebas Rendimiento");
     btnBenchmarking->setCursor(Qt::PointingHandCursor);
+    std::cout << "Botón creado: " << btnBenchmarking->text().toStdString() << std::endl;
 
     // Agregar widgets al layout del sidebar
     layoutSidebar->addWidget(lblTitulo);
@@ -301,6 +482,7 @@ void VentanaPrincipal::configurarSidebar() {
     layoutSidebar->addWidget(btnCargarSucursalesCSV);
     layoutSidebar->addWidget(btnCargarConexionesCSV);
     layoutSidebar->addWidget(btnCargarProductosCSV);
+    layoutSidebar->addWidget(btnCargarTrasladosCSV);
     layoutSidebar->addSpacing(8);
     layoutSidebar->addWidget(lblSeccionSucursales);
     layoutSidebar->addWidget(btnAgregarSucursal);
@@ -492,6 +674,7 @@ void VentanaPrincipal::aplicarEstilos() {
             border: none;
             border-radius: 6px;
             text-align: left;
+            font-family: "Segoe UI", "Arial", sans-serif;
         }
 
         #btnSidebar:hover {
@@ -793,6 +976,7 @@ void VentanaPrincipal::conectarSenales() {
     connect(btnCargarSucursalesCSV, &QPushButton::clicked, this, &VentanaPrincipal::onCargarSucursalesCSV);
     connect(btnCargarConexionesCSV, &QPushButton::clicked, this, &VentanaPrincipal::onCargarConexionesCSV);
     connect(btnCargarProductosCSV, &QPushButton::clicked, this, &VentanaPrincipal::onCargarProductosCSV);
+    connect(btnCargarTrasladosCSV, &QPushButton::clicked, this, &VentanaPrincipal::onCargarTrasladosCSV);
     connect(btnAgregarSucursal, &QPushButton::clicked, this, &VentanaPrincipal::onAgregarSucursal);
     connect(btnModificarSucursal, &QPushButton::clicked, this, &VentanaPrincipal::onModificarSucursal);
     connect(btnEliminarSucursal, &QPushButton::clicked, this, &VentanaPrincipal::onEliminarSucursal);
@@ -828,7 +1012,6 @@ void VentanaPrincipal::onTickSimulacion() {
     }
 
     simulador->avanzar();
-    std::cout << "[VentanaPrincipal] Tick de simulacion procesado.\n";
 }
 
 // refrescarComboSucursales: Reconstruye el combo con ID y nombre de sucursales.
@@ -998,6 +1181,124 @@ void VentanaPrincipal::onCargarProductosCSV() {
 
     actualizarTabla();
     QMessageBox::information(this, "Carga completada", "Productos cargados correctamente.");
+}
+
+// SLOT: Carga traslados desde un archivo CSV y programa los envios en el simulador.
+// Complejidad O(n^2) en validacion de duplicados por recorrido lineal de los registros ya cargados.
+void VentanaPrincipal::onCargarTrasladosCSV() {
+    if (sucursales == nullptr || simulador == nullptr) {
+        QMessageBox::critical(this, "Error", "No hay infraestructura de sucursales o simulador disponible.");
+        return;
+    }
+
+    const QString archivo = QFileDialog::getOpenFileName(
+        this,
+        "Seleccionar archivo CSV de traslados",
+        "data/",
+        "Archivos CSV (*.csv);;Todos los archivos (*.*)"
+    );
+
+    if (archivo.isEmpty()) {
+        return;
+    }
+
+    std::ifstream archivoCSV(archivo.toStdString());
+    if (!archivoCSV.is_open()) {
+        QMessageBox::critical(this, "Error", "No se pudo abrir el archivo de traslados.");
+        return;
+    }
+
+    std::ofstream archivoErrores("errors.log", std::ios::app);
+    if (!archivoErrores.is_open()) {
+        QMessageBox::critical(this, "Error", "No se pudo abrir errors.log para registrar errores.");
+        return;
+    }
+
+    std::string linea;
+    int numeroLinea = 0;
+    int totalProgramados = 0;
+    int totalErrores = 0;
+    std::vector<TransferenciaCSV> transferenciasProcesadas;
+
+    while (std::getline(archivoCSV, linea)) {
+        ++numeroLinea;
+
+        if (linea.empty()) {
+            registrarErrorCSV(archivoErrores, numeroLinea, "Linea vacia", linea);
+            ++totalErrores;
+            continue;
+        }
+
+        std::string campos[3];
+        int cantidadCampos = 0;
+        if (!dividirLineaCSVLocal(linea, campos, 3, cantidadCampos) || cantidadCampos != 3) {
+            registrarErrorCSV(archivoErrores, numeroLinea, "Linea malformada", linea);
+            ++totalErrores;
+            continue;
+        }
+
+        if (esCabeceraTrasladosCSV(campos, cantidadCampos)) {
+            continue;
+        }
+
+        int idOrigen = -1;
+        int idDestino = -1;
+        if (!convertirEnteroCSV(campos[0], idOrigen) || !convertirEnteroCSV(campos[1], idDestino)) {
+            registrarErrorCSV(archivoErrores, numeroLinea, "Origen o destino invalido", linea);
+            ++totalErrores;
+            continue;
+        }
+
+        const std::string productoId = campos[2];
+        if (idOrigen < 0 || idDestino < 0 || productoId.empty()) {
+            registrarErrorCSV(archivoErrores, numeroLinea, "Campos obligatorios vacios o negativos", linea);
+            ++totalErrores;
+            continue;
+        }
+
+        TransferenciaCSV traslado{ idOrigen, idDestino, productoId };
+        if (transferenciaDuplicada(transferenciasProcesadas, traslado)) {
+            registrarErrorCSV(archivoErrores, numeroLinea, "Traslado duplicado en el archivo", linea);
+            ++totalErrores;
+            continue;
+        }
+
+        Sucursal* sucursalOrigen = sucursales->buscar(idOrigen);
+        Sucursal* sucursalDestino = sucursales->buscar(idDestino);
+        if (sucursalOrigen == nullptr || sucursalDestino == nullptr) {
+            registrarErrorCSV(archivoErrores, numeroLinea, "Sucursal origen o destino inexistente", linea);
+            ++totalErrores;
+            continue;
+        }
+
+        Producto* producto = sucursalOrigen->buscarPorCodigo(productoId);
+        if (producto == nullptr) {
+            registrarErrorCSV(archivoErrores, numeroLinea, "Producto no encontrado en sucursal origen", linea);
+            ++totalErrores;
+            continue;
+        }
+
+        simulador->programarEnvio(producto, idOrigen, idDestino, true);
+        transferenciasProcesadas.push_back(traslado);
+        ++totalProgramados;
+
+        std::cout << "[VentanaPrincipal] Traslado programado: "
+                  << idOrigen << " -> " << idDestino
+                  << " | Producto: " << productoId << '\n';
+    }
+
+    actualizarTabla();
+    dibujarGrafo();
+    actualizarBarraEstado();
+
+    std::cout << "[VentanaPrincipal] Carga de traslados finalizada. Programados: "
+              << totalProgramados << ", errores: " << totalErrores << ".\n";
+    QMessageBox::information(
+        this,
+        "Carga completada",
+        QString("Traslados cargados correctamente.\nProgramados: %1\nErrores: %2")
+            .arg(totalProgramados)
+            .arg(totalErrores));
 }
 
 // SLOT: Agrega sucursal desde formulario.
@@ -1177,16 +1478,29 @@ void VentanaPrincipal::onCambioSucursalSeleccionada(int indice) {
 }
 
 // SLOT: Acción de navegación hacia sucursal seleccionada.
-// Complejidad: O(1).
+// Complejidad: O(s), por búsqueda lineal de la sucursal en la lista enlazada.
 void VentanaPrincipal::onIrASucursal() {
-    const int id = obtenerIdSucursalSeleccionada();
-    if (id < 0) {
+    const int idSucursal = obtenerIdSucursalSeleccionada();
+    if (idSucursal < 0) {
         QMessageBox::warning(this, "Sin selección", "Seleccione una sucursal.");
         return;
     }
 
-    seleccionarSucursal(id);
-    std::cout << "Viajando a sucursal [" << id << "]\n";
+    if (sucursales == nullptr) {
+        QMessageBox::critical(this, "Error", "La lista de sucursales no está disponible.");
+        return;
+    }
+
+    Sucursal* sucursalSeleccionada = sucursales->buscar(idSucursal);
+    if (sucursalSeleccionada == nullptr) {
+        QMessageBox::warning(this, "No encontrada", "No se encontró la sucursal seleccionada.");
+        return;
+    }
+
+    seleccionarSucursal(idSucursal);
+    VentanaSucursal dialogoSucursal(sucursalSeleccionada, simulador, this);
+    dialogoSucursal.exec();
+
     actualizarTabla();
     dibujarGrafo();
 }

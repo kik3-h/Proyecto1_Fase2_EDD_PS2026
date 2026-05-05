@@ -60,6 +60,11 @@ Producto* Cola::verFrente() const {
     return frente->dato;
 }
 
+// Retorna el nodo frontal para iteración externa sin alterar la cola. O(1).
+Cola::NodoCola* Cola::obtenerFrente() const {
+    return frente;
+}
+
 // Indica si la cola está vacía. O(1).
 bool Cola::vacia() const {
     return frente == nullptr;

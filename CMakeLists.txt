@@ -41,6 +41,7 @@ set(FUENTES
     src/GrafoSucursales.cpp
     src/Simulador.cpp
     src/VisorGrafo.cpp
+    src/VentanaSucursal.cpp
     src/CargadorCSV.cpp
     src/MedidorRendimiento.cpp
     src/VentanaPrincipal.cpp
@@ -62,6 +63,7 @@ set(CABECERAS
     include/GrafoSucursales.h
     include/Simulador.h
     include/VisorGrafo.h
+    include/VentanaSucursal.h
     include/CargadorCSV.h
     include/MedidorRendimiento.h
     include/VentanaPrincipal.h

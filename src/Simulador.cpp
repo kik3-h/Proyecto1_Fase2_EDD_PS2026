@@ -3,8 +3,31 @@
 #include <iostream>
 //esta clase hace la simulación de la red de sucursales 
 //
+namespace {
+// Escala un valor temporal por el factor de aceleracion manteniendo un minimo de 1.
+// Complejidad O(1).
+int escalarPorAceleracion(int valor, int factorAceleracion) {
+    if (factorAceleracion <= 0) {
+        factorAceleracion = 1;
+    }
+
+    valor /= factorAceleracion;
+    if (valor <= 0) {
+        valor = 1;
+    }
+    return valor;
+}
+}  // namespace
+
 Simulador::Simulador(GrafoSucursales* g, ListaSucursales* s)
-    : grafo(g), sucursales(s), eventosPendientes(new Cola()), tickActual(0) {}
+    : grafo(g), sucursales(s), eventosPendientes(new Cola()), tickActual(0), factorAceleracion(1000) {}
+
+void Simulador::establecerFactorAceleracion(int nuevoFactor) {
+    if (nuevoFactor <= 0) {
+        nuevoFactor = 1;
+    }
+    factorAceleracion = nuevoFactor;
+}
 
 Simulador::~Simulador() {
     if (eventosPendientes != nullptr) {
@@ -145,10 +168,8 @@ bool Simulador::procesarEtapaIngreso(EventoTraslado* evento) {
     }
 
     ++evento->ticksEtapa;
-    int limiteIngreso = evento->sucursalActual->obtenerTiempoIngreso();
-    if (limiteIngreso <= 0) {
-        limiteIngreso = 1;
-    }
+    int limiteIngreso = escalarPorAceleracion(evento->sucursalActual->obtenerTiempoIngreso(),
+                                               factorAceleracion);
 
     if (evento->ticksEtapa < limiteIngreso) {
         return true;
@@ -166,6 +187,19 @@ bool Simulador::procesarEtapaIngreso(EventoTraslado* evento) {
         (evento->indiceRutaActual >= evento->longitudRuta - 1);
 
     if (esDestinoFinal) {
+        // Insercion O(log n) promedio en el inventario local; la validacion interna evita duplicados.
+        const bool agregado = evento->sucursalActual->agregarProducto(evento->producto);
+        if (agregado) {
+            std::cout << "[Simulador] Tick " << tickActual
+                      << ": producto " << evento->producto->codigoBarras
+                      << " insertado en inventario de sucursal "
+                      << evento->sucursalActual->obtenerId() << '\n';
+        } else {
+            std::cout << "[Simulador] Tick " << tickActual
+                      << ": producto " << evento->producto->codigoBarras
+                      << " ya existia en inventario de sucursal "
+                      << evento->sucursalActual->obtenerId() << '\n';
+        }
         evento->producto->establecerEstado("Disponible");
         std::cout << "[Simulador] Tick " << tickActual
                   << ": producto " << evento->producto->codigoBarras
@@ -201,10 +235,8 @@ bool Simulador::procesarEtapaPreparacion(EventoTraslado* evento) {
     }
 
     ++evento->ticksEtapa;
-    int limitePreparacion = evento->sucursalActual->obtenerTiempoPreparacion();
-    if (limitePreparacion <= 0) {
-        limitePreparacion = 1;
-    }
+    int limitePreparacion = escalarPorAceleracion(evento->sucursalActual->obtenerTiempoPreparacion(),
+                                                   factorAceleracion);
 
     if (evento->ticksEtapa < limitePreparacion) {
         return true;
@@ -248,10 +280,8 @@ bool Simulador::procesarEtapaSalidaYTransito(EventoTraslado* evento) {
         }
 
         ++evento->ticksEtapa;
-        int limiteDespacho = evento->sucursalActual->obtenerIntervaloDespacho();
-        if (limiteDespacho <= 0) {
-            limiteDespacho = 1;
-        }
+        int limiteDespacho = escalarPorAceleracion(evento->sucursalActual->obtenerIntervaloDespacho(),
+                                                   factorAceleracion);
 
         if (evento->ticksEtapa < limiteDespacho) {
             return true;
@@ -275,10 +305,9 @@ bool Simulador::procesarEtapaSalidaYTransito(EventoTraslado* evento) {
 
         const int origenActual = evento->rutaIds[evento->indiceRutaActual];
         const int siguienteNodo = evento->rutaIds[evento->indiceRutaActual + 1];
-        int duracion = obtenerPesoConexion(origenActual, siguienteNodo, evento->porTiempo);
-        if (duracion <= 0) {
-            duracion = 1;
-        }
+        int duracion = escalarPorAceleracion(
+            obtenerPesoConexion(origenActual, siguienteNodo, evento->porTiempo),
+            factorAceleracion);
 
         evento->enViaje = true;
         evento->ticksEtapa = 0;
@@ -346,7 +375,7 @@ void Simulador::avanzar() {
         return;
     }
 
-    ++tickActual;
+    tickActual += factorAceleracion;
 
     if (eventosPendientes->vacia()) {
         return;
