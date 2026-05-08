@@ -15,20 +15,62 @@ digraph ArbolBPlus {
         ley1 -> ley2 [style=dashed, color=blue, label="Enlace Hoja"];
     }
 
-    nodo0 [label="<f0> Lácteos", fillcolor=lightyellow];
+    nodo0 [label="<f0> Dulces y Chocolates|<f1> Mariscos y Pescados", fillcolor=lightyellow];
     nodo0 -> nodo1;
-    nodo1 [label="{<f0> Alimentos|<f1> Bebidas|<f2> Enlatados|<f3> Granos}|<sig>", fillcolor=lightgreen];
-    nodo0 -> nodo2;
-    nodo2 [label="{<f0> Lácteos|<f1> Panadería|<f2> Snacks|<f3> prueba}|<sig>", fillcolor=lightgreen];
+    nodo1 [label="<f0> Alimento seco para Perros|<f1> Cerdo", fillcolor=lightyellow];
+    nodo1 -> nodo2;
+    nodo2 [label="{<f0> Accesorios para Perros|<f1> Agua|<f2> Alimento Húmedo Para Gatos|<f3> Alimento Húmedo Para Perros|<f4> Alimento seco para Gatos}|<sig>", fillcolor=lightgreen];
+    nodo1 -> nodo3;
+    nodo3 [label="{<f0> Alimento seco para Perros|<f1> Alimento y accesorios otras Mascotas|<f2> Alimentos Instantáneos|<f3> Café, Té y Sustitutos}|<sig>", fillcolor=lightgreen];
+    nodo1 -> nodo4;
+    nodo4 [label="{<f0> Cerdo|<f1> Cereales y Barras}|<sig>", fillcolor=lightgreen];
+    nodo0 -> nodo5;
+    nodo5 [label="<f0> Energizantes e Hidratantes|<f1> Gaseosas|<f2> Leche", fillcolor=lightyellow];
+    nodo5 -> nodo6;
+    nodo6 [label="{<f0> Dulces y Chocolates|<f1> Embutidos}|<sig>", fillcolor=lightgreen];
+    nodo5 -> nodo7;
+    nodo7 [label="{<f0> Energizantes e Hidratantes|<f1> Enlatados y Conservas|<f2> Especias y Sazonadores|<f3> Galletas}|<sig>", fillcolor=lightgreen];
+    nodo5 -> nodo8;
+    nodo8 [label="{<f0> Gaseosas|<f1> Huevo|<f2> Jugos y Néctares}|<sig>", fillcolor=lightgreen];
+    nodo5 -> nodo9;
+    nodo9 [label="{<f0> Leche|<f1> Limpieza y Cuidado|<f2> Mantequillas y margarinas}|<sig>", fillcolor=lightgreen];
+    nodo0 -> nodo10;
+    nodo10 [label="<f0> Pan Salado|<f1> Repostería y Pastelería|<f2> Snacks y Fruta Seca", fillcolor=lightyellow];
+    nodo10 -> nodo11;
+    nodo11 [label="{<f0> Mariscos y Pescados|<f1> Pan Dulce}|<sig>", fillcolor=lightgreen];
+    nodo10 -> nodo12;
+    nodo12 [label="{<f0> Pan Salado|<f1> Pastas|<f2> Pollo|<f3> Premios y Carnazas|<f4> Queso}|<sig>", fillcolor=lightgreen];
+    nodo10 -> nodo13;
+    nodo13 [label="{<f0> Repostería y Pastelería|<f1> Res|<f2> Salsa, Aderezos y Vinagre}|<sig>", fillcolor=lightgreen];
+    nodo10 -> nodo14;
+    nodo14 [label="{<f0> Snacks y Fruta Seca|<f1> Tortillería|<f2> Yogurt}|<sig>", fillcolor=lightgreen];
 
     // Subgrafo para alinear hojas horizontalmente
     {
         rank=same;
-        nodo1;
         nodo2;
+        nodo3;
+        nodo4;
+        nodo6;
+        nodo7;
+        nodo8;
+        nodo9;
+        nodo11;
+        nodo12;
+        nodo13;
+        nodo14;
     }
 
     // Enlaces secuenciales entre hojas (flechas punteadas azules)
     // Demuestran el recorrido O(log N + K) del Arbol B+
-    nodo1:sig -> nodo2:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
+    nodo2:sig -> nodo3:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
+    nodo3:sig -> nodo4:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
+    nodo4:sig -> nodo6:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
+    nodo6:sig -> nodo7:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
+    nodo7:sig -> nodo8:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
+    nodo8:sig -> nodo9:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
+    nodo9:sig -> nodo11:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
+    nodo11:sig -> nodo12:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
+    nodo12:sig -> nodo13:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
+    nodo13:sig -> nodo14:f0 [style=dashed, color=blue, penwidth=2.0, constraint=false, label="sig", fontcolor=blue];
 }
